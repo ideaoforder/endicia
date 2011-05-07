@@ -24,6 +24,7 @@ Gem::Specification.new do |s|
     "README.rdoc",
     "Rakefile",
     "VERSION",
+    "endicia.gemspec",
     "lib/endicia.rb",
     "test/helper.rb",
     "test/test_endicia.rb"
