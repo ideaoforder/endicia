@@ -9,10 +9,25 @@ You'll need an endicia.yml file in config, with:
 	PassPhrase (string)
 and optionally
 	Test (set this to true while in testing and/or in development env)
+	
+Additionally, you may want to set a few defaults like your address:
+	FromCompany
+	FromCity
+	FromState
+	FromPostalCode
+	ReturnCompany
+	ReturnCity
+	ReturnState
+	ReturnCode
 
-You can also specify any of the options that Endicia allows for 'GetPostageLabel' as defaults. Most of them you'll want to pass in, but you might find it convenient to switch the default image format globally, for instance.
+You can also specify any of the options that Endicia allows for 'GetPostageLabel' as defaults. Most of them you'll want to pass in, but you might find it convenient to switch the default image format globally, for instance. Any options you pass in directly will override that defaults in the config file.
 
 Cheers!
+
+== Usage ==
+There's only one method--_get_label_.
+
+Ex. Endicia.get_label({:ToPostalCode => RECIPIENT ZIP, :ToAddress1 => RECIPIENT ADDRESS, :ToCity => RECIPIENT CITY, :ToState => RECIPIENT STATE, :PartnerTransactionID => GENERALLY THE ORDER (OR SOME MODEL) ID, :PartnerCustomerID => GENERALLY CUSTOMER/USER ID, :MailClass => SHIPPING METHOD, :WeightOz => INTEGER WEIGHT})
 
 == Contributing to endicia
  
