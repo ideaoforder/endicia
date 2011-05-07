@@ -24,7 +24,7 @@ You can also specify any of the options that Endicia allows for 'GetPostageLabel
 
 Cheers!
 
-== Usage ==
+== Usage
 There's only one method--_get_label_.
 
 Ex. Endicia.get_label({:ToPostalCode => RECIPIENT ZIP, :ToAddress1 => RECIPIENT ADDRESS, :ToCity => RECIPIENT CITY, :ToState => RECIPIENT STATE, :PartnerTransactionID => GENERALLY THE ORDER (OR SOME MODEL) ID, :PartnerCustomerID => GENERALLY CUSTOMER/USER ID, :MailClass => SHIPPING METHOD, :WeightOz => INTEGER WEIGHT})
