@@ -1,6 +1,18 @@
 = endicia
 
-Description goes here.
+This gem allows you to connect to your Endicia API to print USPS labels. It is in no way meant to be exhaustive--fork away!
+ 
+== Configuration
+You'll need an endicia.yml file in config, with:
+	AccountID (6 digits)
+	RequesterID (string--you have to request this from Endicia)
+	PassPhrase (string)
+and optionally
+	Test (set this to true while in testing and/or in development env)
+
+You can also specify any of the options that Endicia allows for 'GetPostageLabel' as defaults. Most of them you'll want to pass in, but you might find it convenient to switch the default image format globally, for instance.
+
+Cheers!
 
 == Contributing to endicia
  
