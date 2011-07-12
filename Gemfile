@@ -1,7 +1,8 @@
 source "http://rubygems.org"
 # Add dependencies required to use your gem here.
 # Example:
-#   gem "activesupport", ">= 2.3.5"
+gem "activesupport", ">= 2.3.5"
+gem "i18n", ">= 0.6.0"
 gem "httparty", ">= 0.4.4"
 
 # Add dependencies to develop your gem here.

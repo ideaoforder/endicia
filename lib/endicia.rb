@@ -1,5 +1,6 @@
 require 'rubygems'
 require 'httparty'
+require 'active_support/core_ext/string'
 
 module Endicia
   include HTTParty
