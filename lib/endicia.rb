@@ -41,11 +41,12 @@ module Endicia
                   :postmark_date, 
                   :postage_balance, 
                   :pic,
+                  :cost_center,
                   :error_message
     def initialize(data)
       data.each do |k, v|
         k = "image" if k == 'Base64LabelImage'
-        send(:"#{k.tableize.singularize}=", v) if !k['xmlns']
+        send(:"#{k.tableize.singularize}=", v) if !k['xmlns'] and self.respond_to? k.tableize.singularize
       end
     end
   end
