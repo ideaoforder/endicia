@@ -42,7 +42,9 @@ module Endicia
                   :postmark_date, 
                   :postage_balance, 
                   :pic,
-                  :error_message
+                  :error_message,
+                  :reference_id,
+                  :cost_center
     def initialize(data)
       data.each do |k, v|
         k = "image" if k == 'Base64LabelImage'
