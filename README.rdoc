@@ -3,13 +3,22 @@
 This gem allows you to connect to your Endicia API to print USPS labels. It is in no way meant to be exhaustive--fork away!
  
 == Configuration
-You'll need an endicia.yml file in config, with:
-	AccountID (6 digits)
-	RequesterID (string--you have to request this from Endicia)
-	PassPhrase (string)
-and optionally
-	Test (set this to true while in testing and/or in development env)
-	
+
+If you're using Rails, you'll want an endicia.yml file in config, with:
+	development: &development
+		AccountID: (any 6 digit number for dev)
+		RequesterID: (any string for dev)
+		PassPhrase: (any string for dev)
+		Test: true
+		
+	test:
+		<<: *development
+		
+	production:
+		AccountID: (6 digits)
+		RequesterID (string--you have to request this from Endicia)
+		PassPhrase (string)
+
 Additionally, you may want to set a few defaults like your address:
 	FromCompany
 	FromCity
@@ -21,6 +30,8 @@ Additionally, you may want to set a few defaults like your address:
 	ReturnCode
 
 You can also specify any of the options that Endicia allows for 'GetPostageLabel' as defaults. Most of them you'll want to pass in, but you might find it convenient to switch the default image format globally, for instance. Any options you pass in directly will override that defaults in the config file.
+
+Outside of Rails, you will need to pass these options to Endicia.get_label.
 
 Cheers!
 

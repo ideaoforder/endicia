@@ -1,5 +1,6 @@
 require 'helper'
 require 'base64'
+require 'ostruct'
 
 class TestEndicia < Test::Unit::TestCase
   context 'Label' do
@@ -24,6 +25,28 @@ class TestEndicia < Test::Unit::TestCase
     
     should "initialize with relevant data from an endicia api response without error" do
       assert_nothing_raised { Endicia::Label.new(@response) }
+    end
+  end
+  
+  context 'defaults in rails' do
+    setup do
+      @config = {
+        "development" => {
+          :AccountID   => 123,
+          :RequesterID => "abc",
+          :PassPhrase  => "123",
+          :Test        => true
+        }
+      }
+      
+      Endicia::Rails = OpenStruct.new({:root => "/project/root", :env => "development"})
+      config_path = "/project/root/config/endicia.yml"
+      File.stubs(:exist?).with(config_path).returns(true)
+      YAML.stubs(:load_file).with(config_path).returns(@config)
+    end
+    
+    should "load from config/endicia.yml" do
+      assert_equal @config["development"], Endicia.defaults
     end
   end
 end
