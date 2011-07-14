@@ -12,20 +12,14 @@ module Endicia
   # PassPhrase (string): Pass Phrase for the Endicia postage account. The Test Server does not authenticate the PassPhrase. Any text value of 1 to 64 characters is valid.
 
   def self.defaults
-    return @defaults if @defaults
-
-    # if we're in a Rails env, let's load the config file
-    if defined?(Rails.root) && defined?(Rails.env)
-      rails_root = Rails.root.to_s 
-      rails_env = Rails.env
-    elsif defined?(RAILS_ROOT) && defined?(ENV['RAILS_ENV'])
-      rails_root = RAILS_ROOT 
-      rails_env = ENV['RAILS_ENV']
+    if rails? && @defaults.nil?
+      config_file = File.join(rails_root, 'config', 'endicia.yml')
+      if File.exist?(config_file)
+        @defaults = YAML.load_file(config_file)[rails_env].symbolize_keys
+      end
     end
-    
-    @defaults = YAML.load_file(File.join(rails_root, 'config', 'endicia.yml'))[rails_env].symbolize_keys if defined? rails_root and File.exist? "#{rails_root}/config/endicia.yml" 
-    @defaults = Hash.new if @defaults.nil?
-    @defaults
+  
+    @defaults || {}
   end
   
   # We probably want the following arguments
@@ -45,6 +39,7 @@ module Endicia
   end
 
   def self.get_label(opts={})
+    opts = defaults.merge(opts)
     test_mode = opts.delete(:Test) || "NO"
     root_attributes = {
       :LabelType => opts.delete(:LabelType) || "Default",
@@ -55,9 +50,7 @@ module Endicia
     
     xml = Builder::XmlMarkup.new
     body = "labelRequestXML=" + xml.LabelRequest(root_attributes) do |xm|
-      defaults.merge(opts).each do |key, value|
-        xm.tag!(key, value)
-      end
+      opts.each { |key, value| xm.tag!(key, value) }
     end
     
     result = self.post(request_url(test_mode), :body => body)
@@ -85,4 +78,23 @@ module Endicia
       end
     end
   end
+  
+  private
+  
+  def self.rails?
+    defined?(Rails) || defined?(RAILS_ROOT)
+  end
+  
+  def self.rails_root
+    if rails?
+      defined?(Rails.root) ? Rails.root : RAILS_ROOT
+    end
+  end
+  
+  def self.rails_env
+    if rails?
+      defined?(Rails.env) ? Rails.env : ENV['RAILS_ENV']
+    end
+  end
 end
+

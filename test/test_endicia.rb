@@ -23,6 +23,22 @@ module TestEndiciaHelper
       Endicia.get_label(key.to_sym => value)
     end
   end
+  
+  def with_rails_endicia_config(attrs)
+    Endicia.stubs(:rails?).returns(true)
+    Endicia.stubs(:rails_root).returns("/project/root")
+    Endicia.stubs(:rails_env).returns("development")
+    
+    config = { "development" => attrs }
+    config_path = "/project/root/config/endicia.yml"
+
+    File.stubs(:exist?).with(config_path).returns(true)
+    YAML.stubs(:load_file).with(config_path).returns(config)
+    
+    yield
+    
+    Endicia.instance_variable_set(:@defaults, nil)
+  end
 end
 
 class TestEndicia < Test::Unit::TestCase
@@ -33,51 +49,51 @@ class TestEndicia < Test::Unit::TestCase
       @test_url = "https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML"
       @production_url = "the production url" # TODO: handle production urls
     end
-    
+  
     should "use test server url if :Test option is YES" do
       expect_request_url(@test_url)
       Endicia.get_label(:Test => "YES")
     end
-    
+  
     should "use production server url if :Test option is NO" do
       expect_request_url(@production_url)
       Endicia.get_label(:Test => "NO")
     end
-    
+  
     should "use production server url if passed no :Test option" do
       expect_request_url(@production_url)
       Endicia.get_label
     end
   end
-  
+
   context 'root node attributes on .get_label request' do
     setup do
       @request_url = "http://test.com"
       Endicia.stubs(:request_url).returns(@request_url)
     end
-    
+  
     should "pass LabelType option" do
       assert_request_attributes("LabelType", %w(Express CertifiedMail Priority))
     end
-    
+  
     should "set LabelType attribute to Default by default" do
       expect_request_attribute("LabelType", "Default")
       Endicia.get_label
     end
-    
+  
     should "pass Test option" do
       assert_request_attributes("Test", %w(YES NO))
     end
-    
+  
     should "pass LabelSize option" do
       assert_request_attributes("LabelSize", %w(4x6 6x4 7x3))
     end
-    
+  
     should "pass ImageFormat option" do
       assert_request_attributes("ImageFormat", %w(PNG GIFT PDF))
     end
   end
-  
+
   context 'Label' do
     setup do
       # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf
@@ -97,37 +113,39 @@ class TestEndicia < Test::Unit::TestCase
         "PostageBalance" => 3.4
       }
     end
-    
+  
     should "initialize with relevant data from an endicia api response without error" do
       assert_nothing_raised { Endicia::Label.new(@response) }
     end
   end
-  
+
   context 'defaults in rails' do
-    setup do
-      Endicia.send(:instance_variable_set, "@defaults", nil) # Smelly :(
-      
-      @config = {
-        "development" => {
-          :AccountID   => 123,
-          :RequesterID => "abc",
-          :PassPhrase  => "123",
-          :Test        => true
-        }
-      }
-      
-      Endicia::Rails = OpenStruct.new({:root => "/project/root", :env => "development"})
-      config_path = "/project/root/config/endicia.yml"
-      File.stubs(:exist?).with(config_path).returns(true)
-      YAML.stubs(:load_file).with(config_path).returns(@config)
-    end
-    
-    teardown do
-      Endicia.send(:remove_const, "Rails")
-    end
-    
     should "load from config/endicia.yml" do
-      assert_equal @config["development"], Endicia.defaults
+      attrs = {
+        :AccountID   => 123,
+        :RequesterID => "abc",
+        :PassPhrase  => "123",
+      }
+    
+      with_rails_endicia_config(attrs) do
+        assert_equal attrs, Endicia.defaults
+      end
+    end
+  
+    should "support root node request attributes" do
+      attrs = {
+        :Test        => "YES",
+        :LabelType   => "Priority",
+        :LabelSize   => "6x4",
+        :ImageFormat => "PNG"
+      }
+    
+      with_rails_endicia_config(attrs) do
+        attrs.each do |key, value|
+          expect_request_attribute(key, value)
+          Endicia.get_label
+        end
+      end
     end
   end
 end
