@@ -1,6 +1,7 @@
 require 'rubygems'
 require 'httparty'
 require 'active_support/core_ext'
+require 'builder'
 
 module Endicia
   include HTTParty
@@ -14,13 +15,15 @@ module Endicia
     return @defaults if @defaults
 
     # if we're in a Rails env, let's load the config file
-    if defined? Rails.root
+    if defined?(Rails.root) && defined?(Rails.env)
       rails_root = Rails.root.to_s 
-    elsif defined? RAILS_ROOT
+      rails_env = Rails.env
+    elsif defined?(RAILS_ROOT) && defined?(ENV['RAILS_ENV'])
       rails_root = RAILS_ROOT 
+      rails_env = ENV['RAILS_ENV']
     end
     
-    @defaults = YAML.load_file(File.join(rails_root, 'config', 'endicia.yml'))[Rails.env].symbolize_keys if defined? rails_root and File.exist? "#{rails_root}/config/endicia.yml" 
+    @defaults = YAML.load_file(File.join(rails_root, 'config', 'endicia.yml'))[rails_env].symbolize_keys if defined? rails_root and File.exist? "#{rails_root}/config/endicia.yml" 
     @defaults = Hash.new if @defaults.nil?
     @defaults
   end
@@ -32,9 +35,32 @@ module Endicia
   # example XML
   # <LabelRequest><ReturnAddress1>884 Railroad Street, Suite C</ReturnAddress1><ReturnCity>Ypsilanti</ReturnCity><ReturnState>MI</ReturnState><FromPostalCode>48197</FromPostalCode><FromCity>Ypsilanti</FromCity><FromState>MI</FromState><FromCompany>VGKids</FromCompany><ToPostalCode>48197</ToPostalCode><ToAddress1>1237 Elbridge St</ToAddress1><ToCity>Ypsilanti</ToCity><ToState>MI</ToState><PartnerTransactionID>123</PartnerTransactionID><PartnerCustomerID>71212</PartnerCustomerID><MailClass>MediaMail</MailClass><Test>YES</Test><RequesterID>poopants</RequesterID><AccountID>792190</AccountID><PassPhrase>whiplash1</PassPhrase><WeightOz>10</WeightOz></LabelRequest>  
 
+  def self.request_url(test)
+    if test && test.upcase == "YES"
+      "https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML"
+    else
+      # TODO: handle production urls
+      "the production url"
+    end
+  end
+
   def self.get_label(opts={})
-    body = "labelRequestXML=" + defaults.merge(opts).to_xml(:skip_instruct => true, :skip_types => true, :root => 'LabelRequest', :indent => 0)
-    result = self.post("https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML", :body => body)
+    test_mode = opts.delete(:Test) || "NO"
+    root_attributes = {
+      :LabelType => opts.delete(:LabelType) || "Default",
+      :Test => test_mode,
+      :LabelSize => opts.delete(:LabelSize),
+      :ImageFormat => opts.delete(:ImageFormat)
+    }
+    
+    xml = Builder::XmlMarkup.new
+    body = "labelRequestXML=" + xml.LabelRequest(root_attributes) do |xm|
+      defaults.merge(opts).each do |key, value|
+        xm.tag!(key, value)
+      end
+    end
+    
+    result = self.post(request_url(test_mode), :body => body)
     return Endicia::Label.new(result["LabelRequestResponse"])
   end
   
@@ -52,6 +78,7 @@ module Endicia
                   :reference_id,
                   :cost_center
     def initialize(data)
+      data ||= {}
       data.each do |k, v|
         k = "image" if k == 'Base64LabelImage'
         send(:"#{k.tableize.singularize}=", v) if !k['xmlns']

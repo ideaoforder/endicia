@@ -1,8 +1,83 @@
 require 'helper'
 require 'base64'
 require 'ostruct'
+require 'nokogiri'
+
+module TestEndiciaHelper
+  def expect_request_attribute(key, value, returns = {})
+    Endicia.expects(:post).with do |request_url, options|
+      doc = Nokogiri::XML(options[:body].sub("labelRequestXML=", ""))
+      !doc.css("LabelRequest[#{key}='#{value}']").empty?
+    end.returns(returns)
+  end
+  
+  def expect_request_url(url)
+    Endicia.expects(:post).with do |request_url, options|
+      request_url == url
+    end.returns({})
+  end
+  
+  def assert_request_attributes(key, values)
+    values.each do |value|
+      expect_request_attribute(key, value)
+      Endicia.get_label(key.to_sym => value)
+    end
+  end
+end
 
 class TestEndicia < Test::Unit::TestCase
+  include TestEndiciaHelper
+  
+  context '.get_label' do
+    setup do
+      @test_url = "https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML"
+      @production_url = "the production url" # TODO: handle production urls
+    end
+    
+    should "use test server url if :Test option is YES" do
+      expect_request_url(@test_url)
+      Endicia.get_label(:Test => "YES")
+    end
+    
+    should "use production server url if :Test option is NO" do
+      expect_request_url(@production_url)
+      Endicia.get_label(:Test => "NO")
+    end
+    
+    should "use production server url if passed no :Test option" do
+      expect_request_url(@production_url)
+      Endicia.get_label
+    end
+  end
+  
+  context 'root node attributes on .get_label request' do
+    setup do
+      @request_url = "http://test.com"
+      Endicia.stubs(:request_url).returns(@request_url)
+    end
+    
+    should "pass LabelType option" do
+      assert_request_attributes("LabelType", %w(Express CertifiedMail Priority))
+    end
+    
+    should "set LabelType attribute to Default by default" do
+      expect_request_attribute("LabelType", "Default")
+      Endicia.get_label
+    end
+    
+    should "pass Test option" do
+      assert_request_attributes("Test", %w(YES NO))
+    end
+    
+    should "pass LabelSize option" do
+      assert_request_attributes("LabelSize", %w(4x6 6x4 7x3))
+    end
+    
+    should "pass ImageFormat option" do
+      assert_request_attributes("ImageFormat", %w(PNG GIFT PDF))
+    end
+  end
+  
   context 'Label' do
     setup do
       # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf
@@ -30,6 +105,8 @@ class TestEndicia < Test::Unit::TestCase
   
   context 'defaults in rails' do
     setup do
+      Endicia.send(:instance_variable_set, "@defaults", nil) # Smelly :(
+      
       @config = {
         "development" => {
           :AccountID   => 123,
@@ -43,6 +120,10 @@ class TestEndicia < Test::Unit::TestCase
       config_path = "/project/root/config/endicia.yml"
       File.stubs(:exist?).with(config_path).returns(true)
       YAML.stubs(:load_file).with(config_path).returns(@config)
+    end
+    
+    teardown do
+      Endicia.send(:remove_const, "Rails")
     end
     
     should "load from config/endicia.yml" do

@@ -9,7 +9,7 @@ If you're using Rails, you'll want an endicia.yml file in config, with:
 		AccountID: (any 6 digit number for dev)
 		RequesterID: (any string for dev)
 		PassPhrase: (any string for dev)
-		Test: true
+		Test: YES
 		
 	test:
 		<<: *development
@@ -18,6 +18,7 @@ If you're using Rails, you'll want an endicia.yml file in config, with:
 		AccountID: (6 digits)
 		RequesterID (string--you have to request this from Endicia)
 		PassPhrase (string)
+		Test: NO
 
 Additionally, you may want to set a few defaults like your address:
 	FromCompany
