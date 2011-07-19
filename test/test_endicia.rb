@@ -98,7 +98,7 @@ class TestEndicia < Test::Unit::TestCase
     setup do
       # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf
       # Table 3-2: LabelRequestResponse XML Elements
-      @response = {
+      @response = { "LabelRequestResponse" => {
         "Status" => 123,
         "ErrorMessage" => "If there's an error it would be here",
         "Base64LabelImage" => Base64.encode64("the label image"),
@@ -111,11 +111,17 @@ class TestEndicia < Test::Unit::TestCase
         "ReferenceID" => "abcde12345",
         "PostmarkDate" => "20110102",
         "PostageBalance" => 3.4
-      }
+      }}
     end
   
     should "initialize with relevant data from an endicia api response without error" do
       assert_nothing_raised { Endicia::Label.new(@response) }
+    end
+    
+    should "include raw response" do
+      @response.stubs(:inspect).returns("the raw response")
+      the_label = Endicia::Label.new(@response)
+      assert_equal "the raw response", the_label.raw_response
     end
   end
 

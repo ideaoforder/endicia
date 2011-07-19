@@ -54,7 +54,7 @@ module Endicia
     end
     
     result = self.post(request_url(test_mode), :body => body)
-    return Endicia::Label.new(result["LabelRequestResponse"])
+    return Endicia::Label.new(result)
   end
   
   class Label
@@ -69,9 +69,11 @@ module Endicia
                   :pic,
                   :error_message,
                   :reference_id,
-                  :cost_center
-    def initialize(data)
-      data ||= {}
+                  :cost_center,
+                  :raw_response
+    def initialize(result)
+      self.raw_response = result.inspect
+      data = result["LabelRequestResponse"] || {}
       data.each do |k, v|
         k = "image" if k == 'Base64LabelImage'
         send(:"#{k.tableize.singularize}=", v) if !k['xmlns']
