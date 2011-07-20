@@ -221,6 +221,13 @@ class TestEndicia < Test::Unit::TestCase
       end
     end
     
+    should "include raw in return hash" do
+      response = stub_everything("response", :inspect => "the raw response")
+      Endicia.stubs(:post).returns(response)
+      result = Endicia.change_pass_phrase("old", "new")
+      assert_equal "the raw response", result[:raw_response]
+    end    
+    
     context 'when successful' do
       setup do
         @credentials = { :RequesterID => "abcd", :AccountID => "123456" }

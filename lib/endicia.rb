@@ -97,12 +97,11 @@ module Endicia
   #
   # Returns a hash in the form:
   #
-  #     { :success => true }
-  # 
-  # or
-  #
-  #     { :success => false, :error_message => "the error message" }
-  #
+  #     {
+  #       :success => true, # or false
+  #       :error_message => "the message", # or nil
+  #       :raw_response => <the full api response object>
+  #     }
   def self.change_pass_phrase(old_phrase, new_phrase, options = {})
     requester_id = options[:RequesterID] || defaults[:RequesterID]
     account_id = options[:AccountID] || defaults[:AccountID]
@@ -131,7 +130,9 @@ module Endicia
                 result["ChangePassPhraseRequestResponse"]["Status"].to_s == "0"
     end
     
-    { :success => success, :error_message => error_message }
+    { :success => success,
+      :error_message => error_message,
+      :raw_response => result.inspect }
   end
   
   class Label
