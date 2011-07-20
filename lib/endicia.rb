@@ -29,6 +29,9 @@ module Endicia
   # example XML
   # <LabelRequest><ReturnAddress1>884 Railroad Street, Suite C</ReturnAddress1><ReturnCity>Ypsilanti</ReturnCity><ReturnState>MI</ReturnState><FromPostalCode>48197</FromPostalCode><FromCity>Ypsilanti</FromCity><FromState>MI</FromState><FromCompany>VGKids</FromCompany><ToPostalCode>48197</ToPostalCode><ToAddress1>1237 Elbridge St</ToAddress1><ToCity>Ypsilanti</ToCity><ToState>MI</ToState><PartnerTransactionID>123</PartnerTransactionID><PartnerCustomerID>71212</PartnerCustomerID><MailClass>MediaMail</MailClass><Test>YES</Test><RequesterID>poopants</RequesterID><AccountID>792190</AccountID><PassPhrase>whiplash1</PassPhrase><WeightOz>10</WeightOz></LabelRequest>  
 
+  # Return the url for making requests.
+  # Pass "YES" to return the url of the test server
+  # (this matches the Test attribute/node value for most API calls).
   def self.request_url(test = nil)
     if test && test.upcase == "YES"
       "https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML"
@@ -38,6 +41,23 @@ module Endicia
     end
   end
 
+  # Request a shipping label.
+  #
+  # Accepts a hash of options in the form:
+  # { :NodeOrAttributeName => "value", ... }
+  #
+  # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 3-1
+  # for available options.
+  #
+  # If you are using rails, any applicable options specified in
+  # config/endicia.yml will be used as defaults. For example:
+  #
+  #     development:
+  #       Test: YES
+  #       AccountID: 123
+  #       ...
+  #
+  # Returns a Endicia::Label object.
   def self.get_label(opts={})
     opts = defaults.merge(opts)
     test_mode = opts.delete(:Test) || "NO"
@@ -57,6 +77,30 @@ module Endicia
     return Endicia::Label.new(result)
   end
   
+  # Change your account pass phrase. This is a required step to move to
+  # production use after requesting an account.
+  #
+  # Accepts a hash of options in the form: { :Name => "value", ... }
+  #
+  # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 5-1
+  # for available options.
+  #
+  # If you are using rails, any applicable options specified in
+  # config/endicia.yml will be used as defaults. For example:
+  #
+  #     development:
+  #       Test: YES
+  #       AccountID: 123
+  #       ...
+  #
+  # Returns a hash in the form:
+  #
+  #     { :success => true }
+  # 
+  # or
+  #
+  #     { :success => false, :error_message => "the error message" }
+  #
   def self.change_pass_phrase(old_phrase, new_phrase, options = {})
     requester_id = options[:RequesterID] || defaults[:RequesterID]
     account_id = options[:AccountID] || defaults[:AccountID]
