@@ -29,7 +29,7 @@ module Endicia
   # example XML
   # <LabelRequest><ReturnAddress1>884 Railroad Street, Suite C</ReturnAddress1><ReturnCity>Ypsilanti</ReturnCity><ReturnState>MI</ReturnState><FromPostalCode>48197</FromPostalCode><FromCity>Ypsilanti</FromCity><FromState>MI</FromState><FromCompany>VGKids</FromCompany><ToPostalCode>48197</ToPostalCode><ToAddress1>1237 Elbridge St</ToAddress1><ToCity>Ypsilanti</ToCity><ToState>MI</ToState><PartnerTransactionID>123</PartnerTransactionID><PartnerCustomerID>71212</PartnerCustomerID><MailClass>MediaMail</MailClass><Test>YES</Test><RequesterID>poopants</RequesterID><AccountID>792190</AccountID><PassPhrase>whiplash1</PassPhrase><WeightOz>10</WeightOz></LabelRequest>  
 
-  def self.request_url(test)
+  def self.request_url(test = nil)
     if test && test.upcase == "YES"
       "https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML"
     else
@@ -55,6 +55,36 @@ module Endicia
     
     result = self.post(request_url(test_mode), :body => body)
     return Endicia::Label.new(result)
+  end
+  
+  def self.change_pass_phrase(old_phrase, new_phrase, options = {})
+    requester_id = options[:RequesterID] || defaults[:RequesterID]
+    account_id = options[:AccountID] || defaults[:AccountID]
+    test_mode = options[:Test] || defaults[:Test] || "NO"
+    
+    xml = Builder::XmlMarkup.new
+    result = self.post(request_url(test_mode), { :body => "changePassPhraseRequestXML=" +
+      xml.ChangePassPhraseRequest do |xml|
+        xml.NewPassPhrase new_phrase
+        xml.RequesterID requester_id
+        xml.RequestID "CPP#{Time.now.to_f}"
+        xml.CertifiedIntermediary do |xml|
+          xml.AccountID account_id
+          xml.PassPhrase old_phrase
+        end
+      end
+    })
+    
+    success = false
+    error_message = nil
+    
+    if result && result["ChangePassPhraseRequestResponse"]
+      error_message = result["ChangePassPhraseRequestResponse"]["ErrorMessage"]
+      success = result["ChangePassPhraseRequestResponse"]["Status"] &&
+                result["ChangePassPhraseRequestResponse"]["Status"].to_s == "0"
+    end
+    
+    { :success => success, :error_message => error_message }
   end
   
   class Label
