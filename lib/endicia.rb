@@ -34,11 +34,12 @@ module Endicia
   # (this matches the Test attribute/node value for most API calls).
   def self.request_url(test = nil)
     if test && test.upcase == "YES"
-      "https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML"
+      url = "https://www.envmgr.com"
     else
-      # TODO: handle production urls
-      "the production url"
+      url = "https://LabelServer.Endicia.com"
     end
+
+    "#{url}/LabelService/EwsLabelService.asmx"
   end
 
   # Request a shipping label.
@@ -73,7 +74,8 @@ module Endicia
       opts.each { |key, value| xm.tag!(key, value) }
     end
     
-    result = self.post(request_url(test_mode), :body => body)
+    url = "#{request_url(test_mode)}/GetPostageLabelXML"
+    result = self.post(url, :body => body)
     return Endicia::Label.new(result)
   end
   
@@ -107,17 +109,18 @@ module Endicia
     test_mode = options[:Test] || defaults[:Test] || "NO"
     
     xml = Builder::XmlMarkup.new
-    result = self.post(request_url(test_mode), { :body => "changePassPhraseRequestXML=" +
-      xml.ChangePassPhraseRequest do |xml|
-        xml.NewPassPhrase new_phrase
-        xml.RequesterID requester_id
-        xml.RequestID "CPP#{Time.now.to_f}"
-        xml.CertifiedIntermediary do |xml|
-          xml.AccountID account_id
-          xml.PassPhrase old_phrase
-        end
+    body = "changePassPhraseRequestXML=" + xml.ChangePassPhraseRequest do |xml|
+      xml.NewPassPhrase new_phrase
+      xml.RequesterID requester_id
+      xml.RequestID "CPP#{Time.now.to_f}"
+      xml.CertifiedIntermediary do |xml|
+        xml.AccountID account_id
+        xml.PassPhrase old_phrase
       end
-    })
+    end
+
+    url = "#{request_url(test_mode)}/ChangePassPhraseXML"
+    result = self.post(url, { :body => body })
     
     success = false
     error_message = nil

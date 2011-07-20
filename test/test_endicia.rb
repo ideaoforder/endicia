@@ -4,9 +4,6 @@ require 'ostruct'
 require 'nokogiri'
 
 module TestEndiciaHelper
-  TEST_URL = "https://www.envmgr.com/LabelService/EwsLabelService.asmx/GetPostageLabelXML"
-  PRODUCTION_URL = "the production url" # TODO: handle real production url(s)
-  
   def expect_label_request_attribute(key, value, returns = {})
     Endicia.expects(:post).with do |request_url, options|
       doc = Nokogiri::XML(options[:body].sub("labelRequestXML=", ""))
@@ -44,6 +41,15 @@ module TestEndiciaHelper
     
     Endicia.instance_variable_set(:@defaults, nil)
   end
+  
+  def the_production_server_url(req_path)
+    "https://LabelServer.Endicia.com/LabelService/EwsLabelService.asmx/#{req_path}"
+  end
+  
+  # Don't call this "test_server_url" or ruby will try to run it as a test.
+  def the_test_server_url(req_path)
+    "https://www.envmgr.com/LabelService/EwsLabelService.asmx/#{req_path}"
+  end  
 end
 
 class TestEndicia < Test::Unit::TestCase
@@ -51,21 +57,21 @@ class TestEndicia < Test::Unit::TestCase
   
   context '.get_label' do
     should "use test server url if :Test option is YES" do
-      expect_request_url(TEST_URL)
+      expect_request_url(the_test_server_url("GetPostageLabelXML"))
       Endicia.get_label(:Test => "YES")
     end
   
     should "use production server url if :Test option is NO" do
-      expect_request_url(PRODUCTION_URL)
+      expect_request_url(the_production_server_url("GetPostageLabelXML"))
       Endicia.get_label(:Test => "NO")
     end
   
     should "use production server url if passed no :Test option" do
-      expect_request_url(PRODUCTION_URL)
+      expect_request_url(the_production_server_url("GetPostageLabelXML"))
       Endicia.get_label
     end
   end
-
+  
   context 'root node attributes on .get_label request' do
     setup do
       @request_url = "http://test.com"
@@ -93,7 +99,7 @@ class TestEndicia < Test::Unit::TestCase
       assert_label_request_attributes("ImageFormat", %w(PNG GIFT PDF))
     end
   end
-
+  
   context 'Label' do
     setup do
       # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf
@@ -124,7 +130,7 @@ class TestEndicia < Test::Unit::TestCase
       assert_equal "the raw response", the_label.raw_response
     end
   end
-
+  
   context 'defaults in rails' do
     should "load from config/endicia.yml" do
       attrs = {
@@ -157,11 +163,11 @@ class TestEndicia < Test::Unit::TestCase
   
   context '.change_pass_phrase(old, new, options)' do
     should 'make a ChangePassPhraseRequest call to the Endicia API' do
-      Endicia.stubs(:request_url).returns("the request url")
+      Endicia.stubs(:request_url).returns("http://example.com/api")
       Time.any_instance.stubs(:to_f).returns("timestamp")
       
       Endicia.expects(:post).with do |request_url, options|
-        request_url == "the request url" &&
+        request_url == "http://example.com/api/ChangePassPhraseXML" &&
         options[:body] &&
         options[:body].match(/changePassPhraseRequestXML=(.+)/) do |match|
           doc = Nokogiri::Slop(match[1])
@@ -198,19 +204,19 @@ class TestEndicia < Test::Unit::TestCase
     end
     
     should 'use test url if passed :Test => YES option' do
-      expect_request_url(TEST_URL)
+      expect_request_url(the_test_server_url("ChangePassPhraseXML"))
       Endicia.change_pass_phrase("old", "new", { :Test => "YES" })
     end
     
     should 'use production url if not passed :Test => YES option' do
-      expect_request_url(PRODUCTION_URL)
+      expect_request_url(the_production_server_url("ChangePassPhraseXML"))
       Endicia.change_pass_phrase("old", "new")
     end
       
     should 'use test option from rails endicia config if present' do
       attrs = {:RequesterID => "efgh", :AccountID => "456789", :Test => "YES"}
       with_rails_endicia_config(attrs) do
-        expect_request_url(TEST_URL)
+        expect_request_url(the_test_server_url("ChangePassPhraseXML"))
         Endicia.change_pass_phrase("old", "new")
       end
     end
@@ -237,7 +243,7 @@ class TestEndicia < Test::Unit::TestCase
             "Status" => "1", "ErrorMessage" => "the error message" }
         })
       end
-
+  
       should 'return hash with :success => false' do
         result = Endicia.change_pass_phrase("old", "new", @credentials)
         assert !result[:success], "result[:success] should be false but it's #{result[:success].inspect}"
