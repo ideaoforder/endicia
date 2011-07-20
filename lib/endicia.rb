@@ -85,7 +85,7 @@ module Endicia
   # Accepts a hash of options in the form: { :Name => "value", ... }
   #
   # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 5-1
-  # for available options.
+  # for available/required options.
   #
   # If you are using rails, any applicable options specified in
   # config/endicia.yml will be used as defaults. For example:
@@ -102,9 +102,10 @@ module Endicia
   #       :error_message => "the message", # or nil
   #       :raw_response => <the full api response object>
   #     }
-  def self.change_pass_phrase(old_phrase, new_phrase, options = {})
+  def self.change_pass_phrase(new_phrase, options = {})
     requester_id = options[:RequesterID] || defaults[:RequesterID]
     account_id = options[:AccountID] || defaults[:AccountID]
+    old_phrase = options[:PassPhrase] || defaults[:PassPhrase]
     test_mode = options[:Test] || defaults[:Test] || "NO"
     
     xml = Builder::XmlMarkup.new

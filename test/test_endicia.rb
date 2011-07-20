@@ -161,7 +161,7 @@ class TestEndicia < Test::Unit::TestCase
     end
   end
   
-  context '.change_pass_phrase(old, new, options)' do
+  context '.change_pass_phrase(new, options)' do
     should 'make a ChangePassPhraseRequest call to the Endicia API' do
       Endicia.stubs(:request_url).returns("http://example.com/api")
       Time.any_instance.stubs(:to_f).returns("timestamp")
@@ -180,14 +180,19 @@ class TestEndicia < Test::Unit::TestCase
         end
       end
       
-      Endicia.change_pass_phrase("oldPassPhrase", "newPassPhrase", {
+      Endicia.change_pass_phrase("newPassPhrase", {
+        :PassPhrase => "oldPassPhrase",
         :RequesterID => "abcd",
         :AccountID => "123456"
       })
     end
     
     should 'use credentials from rails endicia config if present' do
-      attrs = { :RequesterID => "efgh", :AccountID => "456789" }
+      attrs = {
+        :PassPhrase => "old_phrase",
+        :RequesterID => "efgh",
+        :AccountID => "456789"
+      }
       with_rails_endicia_config(attrs) do
         Endicia.expects(:post).with do |request_url, options|
           options[:body] &&
@@ -195,56 +200,55 @@ class TestEndicia < Test::Unit::TestCase
             doc = Nokogiri::Slop(match[1])
             doc.ChangePassPhraseRequest &&
             doc.ChangePassPhraseRequest.RequesterID.content == "efgh" &&
-            doc.ChangePassPhraseRequest.CertifiedIntermediary.AccountID.content == "456789"
+            doc.ChangePassPhraseRequest.CertifiedIntermediary.AccountID.content == "456789" &&
+            doc.ChangePassPhraseRequest.CertifiedIntermediary.PassPhrase.content == "old_phrase"
           end
         end
         
-        Endicia.change_pass_phrase("old", "new")
+        Endicia.change_pass_phrase("new")
       end
     end
     
     should 'use test url if passed :Test => YES option' do
       expect_request_url(the_test_server_url("ChangePassPhraseXML"))
-      Endicia.change_pass_phrase("old", "new", { :Test => "YES" })
+      Endicia.change_pass_phrase("new", { :Test => "YES" })
     end
     
     should 'use production url if not passed :Test => YES option' do
       expect_request_url(the_production_server_url("ChangePassPhraseXML"))
-      Endicia.change_pass_phrase("old", "new")
+      Endicia.change_pass_phrase("new")
     end
       
     should 'use test option from rails endicia config if present' do
-      attrs = {:RequesterID => "efgh", :AccountID => "456789", :Test => "YES"}
+      attrs = { :Test => "YES" }
       with_rails_endicia_config(attrs) do
         expect_request_url(the_test_server_url("ChangePassPhraseXML"))
-        Endicia.change_pass_phrase("old", "new")
+        Endicia.change_pass_phrase("new")
       end
     end
     
     should "include raw in return hash" do
       response = stub_everything("response", :inspect => "the raw response")
       Endicia.stubs(:post).returns(response)
-      result = Endicia.change_pass_phrase("old", "new")
+      result = Endicia.change_pass_phrase("new")
       assert_equal "the raw response", result[:raw_response]
     end    
     
     context 'when successful' do
       setup do
-        @credentials = { :RequesterID => "abcd", :AccountID => "123456" }
         Endicia.stubs(:post).returns({
           "ChangePassPhraseRequestResponse" => { "Status" => "0" }
         })
       end
       
       should 'return hash with :success => true' do
-        result = Endicia.change_pass_phrase("old", "new", @credentials)
+        result = Endicia.change_pass_phrase("new_phrase")
         assert result[:success], "result[:success] should be true but it's #{result[:success].inspect}"
       end
     end
     
     context 'when not successful' do
       setup do
-        @credentials = { :RequesterID => "abcd", :AccountID => "123456" }
         Endicia.stubs(:post).returns({
           "ChangePassPhraseRequestResponse" => {
             "Status" => "1", "ErrorMessage" => "the error message" }
@@ -252,12 +256,12 @@ class TestEndicia < Test::Unit::TestCase
       end
   
       should 'return hash with :success => false' do
-        result = Endicia.change_pass_phrase("old", "new", @credentials)
+        result = Endicia.change_pass_phrase("new_phrase")
         assert !result[:success], "result[:success] should be false but it's #{result[:success].inspect}"
       end
       
       should 'return hash with an :error_message' do
-        result = Endicia.change_pass_phrase("old", "new", @credentials)
+        result = Endicia.change_pass_phrase("new_phrase")
         assert_equal "the error message", result[:error_message]
       end
     end
