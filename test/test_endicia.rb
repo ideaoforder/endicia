@@ -266,4 +266,110 @@ class TestEndicia < Test::Unit::TestCase
       end
     end
   end
+
+  context '.buy_postage(amount)' do
+    should 'make a BuyPostage call to the Endicia API' do
+      Endicia.stubs(:request_url).returns("http://example.com/api")
+      Time.any_instance.stubs(:to_f).returns("timestamp")
+      
+      Endicia.expects(:post).with do |request_url, options|
+        request_url == "http://example.com/api/BuyPostageXML" &&
+        options[:body] &&
+        options[:body].match(/recreditRequestXML=(.+)/) do |match|
+          doc = Nokogiri::Slop(match[1])
+          doc.RecreditRequest &&
+          doc.RecreditRequest.RequesterID.content == "abcd" &&
+          doc.RecreditRequest.RequestID.content == "BPtimestamp" &&
+          doc.RecreditRequest.CertifiedIntermediary.AccountID.content == "123456" &&
+          doc.RecreditRequest.CertifiedIntermediary.PassPhrase.content == "PassPhrase" &&
+          doc.RecreditRequest.RecreditAmount.content == "125.99"
+        end
+      end
+      
+      Endicia.buy_postage("125.99", {
+        :PassPhrase => "PassPhrase",
+        :RequesterID => "abcd",
+        :AccountID => "123456"
+      })
+    end
+    
+    should 'use credentials from rails endicia config if present' do
+      attrs = {
+        :PassPhrase => "my_phrase",
+        :RequesterID => "efgh",
+        :AccountID => "456789"
+      }
+      with_rails_endicia_config(attrs) do
+        Endicia.expects(:post).with do |request_url, options|
+          options[:body] &&
+          options[:body].match(/recreditRequestXML=(.+)/) do |match|
+            doc = Nokogiri::Slop(match[1])
+            doc.RecreditRequest &&
+            doc.RecreditRequest.RequesterID.content == "efgh" &&
+            doc.RecreditRequest.CertifiedIntermediary.AccountID.content == "456789" &&
+            doc.RecreditRequest.CertifiedIntermediary.PassPhrase.content == "my_phrase"
+          end
+        end
+        
+        Endicia.buy_postage("100")
+      end
+    end
+    
+    should 'use test url if passed :Test => YES option' do
+      expect_request_url(the_test_server_url("BuyPostageXML"))
+      Endicia.buy_postage("100", { :Test => "YES" })
+    end
+    
+    should 'use production url if not passed :Test => YES option' do
+      expect_request_url(the_production_server_url("BuyPostageXML"))
+      Endicia.buy_postage("100")
+    end
+      
+    should 'use test option from rails endicia config if present' do
+      attrs = { :Test => "YES" }
+      with_rails_endicia_config(attrs) do
+        expect_request_url(the_test_server_url("BuyPostageXML"))
+        Endicia.buy_postage("100")
+      end
+    end
+    
+    should "include raw in return hash" do
+      response = stub_everything("response", :inspect => "the raw response")
+      Endicia.stubs(:post).returns(response)
+      result = Endicia.buy_postage("100")
+      assert_equal "the raw response", result[:raw_response]
+    end
+    
+    context 'when successful' do
+      setup do
+        Endicia.stubs(:post).returns({
+          "RecreditRequestResponse" => { "Status" => "0" }
+        })
+      end
+      
+      should 'return hash with :success => true' do
+        result = Endicia.buy_postage("100")
+        assert result[:success], "result[:success] should be true but it's #{result[:success].inspect}"
+      end
+    end
+    
+    context 'when not successful' do
+      setup do
+        Endicia.stubs(:post).returns({
+          "RecreditRequestResponse" => {
+            "Status" => "1", "ErrorMessage" => "the error message" }
+        })
+      end
+  
+      should 'return hash with :success => false' do
+        result = Endicia.buy_postage("100")
+        assert !result[:success], "result[:success] should be false but it's #{result[:success].inspect}"
+      end
+      
+      should 'return hash with an :error_message' do
+        result = Endicia.buy_postage("100")
+        assert_equal "the error message", result[:error_message]
+      end
+    end
+  end
 end

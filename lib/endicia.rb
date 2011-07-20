@@ -136,6 +136,40 @@ module Endicia
       :raw_response => result.inspect }
   end
   
+  def self.buy_postage(amount, options = {})
+    requester_id = options[:RequesterID] || defaults[:RequesterID]
+    account_id = options[:AccountID] || defaults[:AccountID]
+    old_phrase = options[:PassPhrase] || defaults[:PassPhrase]
+    test_mode = options[:Test] || defaults[:Test] || "NO"
+    
+    xml = Builder::XmlMarkup.new
+    body = "recreditRequestXML=" + xml.RecreditRequest do |xml|
+      xml.RecreditAmount amount
+      xml.RequesterID requester_id
+      xml.RequestID "BP#{Time.now.to_f}"
+      xml.CertifiedIntermediary do |xml|
+        xml.AccountID account_id
+        xml.PassPhrase old_phrase
+      end
+    end
+
+    url = "#{request_url(test_mode)}/BuyPostageXML"
+    result = self.post(url, { :body => body })
+    
+    success = false
+    error_message = nil
+    
+    if result && result["RecreditRequestResponse"]
+      error_message = result["RecreditRequestResponse"]["ErrorMessage"]
+      success = result["RecreditRequestResponse"]["Status"] &&
+                result["RecreditRequestResponse"]["Status"].to_s == "0"
+    end
+    
+    { :success => success,
+      :error_message => error_message,
+      :raw_response => result.inspect }
+  end
+  
   class Label
     attr_accessor :image, 
                   :status, 
