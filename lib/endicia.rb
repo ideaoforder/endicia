@@ -11,36 +11,12 @@ module Endicia
   # AccountID (6 digits): Account ID for the Endicia postage account. The Test Server does not authenticate the AccountID. Any 6-digit value is valid.
   # PassPhrase (string): Pass Phrase for the Endicia postage account. The Test Server does not authenticate the PassPhrase. Any text value of 1 to 64 characters is valid.
 
-  def self.defaults
-    if rails? && @defaults.nil?
-      config_file = File.join(rails_root, 'config', 'endicia.yml')
-      if File.exist?(config_file)
-        @defaults = YAML.load_file(config_file)[rails_env].symbolize_keys
-      end
-    end
-  
-    @defaults || {}
-  end
-  
   # We probably want the following arguments
   # MailClass, WeightOz, MailpieceShape, Machinable, FromPostalCode
   
   format :xml
   # example XML
   # <LabelRequest><ReturnAddress1>884 Railroad Street, Suite C</ReturnAddress1><ReturnCity>Ypsilanti</ReturnCity><ReturnState>MI</ReturnState><FromPostalCode>48197</FromPostalCode><FromCity>Ypsilanti</FromCity><FromState>MI</FromState><FromCompany>VGKids</FromCompany><ToPostalCode>48197</ToPostalCode><ToAddress1>1237 Elbridge St</ToAddress1><ToCity>Ypsilanti</ToCity><ToState>MI</ToState><PartnerTransactionID>123</PartnerTransactionID><PartnerCustomerID>71212</PartnerCustomerID><MailClass>MediaMail</MailClass><Test>YES</Test><RequesterID>poopants</RequesterID><AccountID>792190</AccountID><PassPhrase>whiplash1</PassPhrase><WeightOz>10</WeightOz></LabelRequest>  
-
-  # Return the url for making requests.
-  # Pass "YES" to return the url of the test server
-  # (this matches the Test attribute/node value for most API calls).
-  def self.request_url(test = nil)
-    if test && test.upcase == "YES"
-      url = "https://www.envmgr.com"
-    else
-      url = "https://LabelServer.Endicia.com"
-    end
-
-    "#{url}/LabelService/EwsLabelService.asmx"
-  end
 
   # Request a shipping label.
   #
@@ -61,10 +37,12 @@ module Endicia
   # Returns a Endicia::Label object.
   def self.get_label(opts={})
     opts = defaults.merge(opts)
-    test_mode = opts.delete(:Test) || "NO"
+    opts[:Test] ||= "NO"
+    url = "#{request_url(opts)}/GetPostageLabelXML"
+
     root_attributes = {
       :LabelType => opts.delete(:LabelType) || "Default",
-      :Test => test_mode,
+      :Test => opts.delete(:Test),
       :LabelSize => opts.delete(:LabelSize),
       :ImageFormat => opts.delete(:ImageFormat)
     }
@@ -74,7 +52,6 @@ module Endicia
       opts.each { |key, value| xm.tag!(key, value) }
     end
     
-    url = "#{request_url(test_mode)}/GetPostageLabelXML"
     result = self.post(url, :body => body)
     return Endicia::Label.new(result)
   end
@@ -103,23 +80,14 @@ module Endicia
   #       :raw_response => <the full api response object>
   #     }
   def self.change_pass_phrase(new_phrase, options = {})
-    requester_id = options[:RequesterID] || defaults[:RequesterID]
-    account_id = options[:AccountID] || defaults[:AccountID]
-    old_phrase = options[:PassPhrase] || defaults[:PassPhrase]
-    test_mode = options[:Test] || defaults[:Test] || "NO"
-    
     xml = Builder::XmlMarkup.new
     body = "changePassPhraseRequestXML=" + xml.ChangePassPhraseRequest do |xml|
+      authorize_request(xml, options)
       xml.NewPassPhrase new_phrase
-      xml.RequesterID requester_id
       xml.RequestID "CPP#{Time.now.to_f}"
-      xml.CertifiedIntermediary do |xml|
-        xml.AccountID account_id
-        xml.PassPhrase old_phrase
-      end
     end
 
-    url = "#{request_url(test_mode)}/ChangePassPhraseXML"
+    url = "#{request_url(options)}/ChangePassPhraseXML"
     result = self.post(url, { :body => body })
     
     success = false
@@ -137,23 +105,14 @@ module Endicia
   end
   
   def self.buy_postage(amount, options = {})
-    requester_id = options[:RequesterID] || defaults[:RequesterID]
-    account_id = options[:AccountID] || defaults[:AccountID]
-    old_phrase = options[:PassPhrase] || defaults[:PassPhrase]
-    test_mode = options[:Test] || defaults[:Test] || "NO"
-    
     xml = Builder::XmlMarkup.new
     body = "recreditRequestXML=" + xml.RecreditRequest do |xml|
+      authorize_request(xml, options)
       xml.RecreditAmount amount
-      xml.RequesterID requester_id
       xml.RequestID "BP#{Time.now.to_f}"
-      xml.CertifiedIntermediary do |xml|
-        xml.AccountID account_id
-        xml.PassPhrase old_phrase
-      end
     end
 
-    url = "#{request_url(test_mode)}/BuyPostageXML"
+    url = "#{request_url(options)}/BuyPostageXML"
     result = self.post(url, { :body => body })
     
     success = false
@@ -210,6 +169,40 @@ module Endicia
     if rails?
       defined?(Rails.env) ? Rails.env : ENV['RAILS_ENV']
     end
+  end
+
+  # Given a builder object, add the auth nodes required for many api calls.
+  # Will pull values from options hash or defaults if not found.
+  def self.authorize_request(xml_builder, options = {})
+    requester_id = options[:RequesterID] || defaults[:RequesterID]
+    account_id   = options[:AccountID]   || defaults[:AccountID]
+    pass_phrase  = options[:PassPhrase]  || defaults[:PassPhrase]
+    
+    xml_builder.RequesterID requester_id
+    xml_builder.CertifiedIntermediary do |xml_builder|
+      xml_builder.AccountID account_id
+      xml_builder.PassPhrase pass_phrase
+    end
+  end
+  
+  # Return the url for making requests.
+  # Pass options hash with :Test => "YES" to return the url of the test server
+  # (this matches the Test attribute/node value for most API calls).
+  def self.request_url(options = {})
+    test = (options[:Test] || defaults[:Test] || "NO").upcase == "YES"
+    url = test ? "https://www.envmgr.com" : "https://LabelServer.Endicia.com"
+    "#{url}/LabelService/EwsLabelService.asmx"
+  end
+
+  def self.defaults
+    if rails? && @defaults.nil?
+      config_file = File.join(rails_root, 'config', 'endicia.yml')
+      if File.exist?(config_file)
+        @defaults = YAML.load_file(config_file)[rails_env].symbolize_keys
+      end
+    end
+  
+    @defaults || {}
   end
 end
 
