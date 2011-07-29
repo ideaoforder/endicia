@@ -81,7 +81,7 @@ module Endicia
   #     {
   #       :success => true, # or false
   #       :error_message => "the message", # or nil
-  #       :raw_response => <the full api response object>
+  #       :raw_response => <string representation of the HTTParty::Response object>
   #     }
   def self.change_pass_phrase(new_phrase, options = {})
     xml = Builder::XmlMarkup.new
@@ -93,21 +93,9 @@ module Endicia
 
     url = "#{request_url(options)}/ChangePassPhraseXML"
     result = self.post(url, { :body => body })
-    
-    success = false
-    error_message = nil
-    
-    if result && result["ChangePassPhraseRequestResponse"]
-      error_message = result["ChangePassPhraseRequestResponse"]["ErrorMessage"]
-      success = result["ChangePassPhraseRequestResponse"]["Status"] &&
-                result["ChangePassPhraseRequestResponse"]["Status"].to_s == "0"
-    end
-    
-    { :success => success,
-      :error_message => error_message,
-      :raw_response => result.inspect }
+    parse_result(result, "ChangePassPhraseRequestResponse")
   end
-  
+
   def self.buy_postage(amount, options = {})
     xml = Builder::XmlMarkup.new
     body = "recreditRequestXML=" + xml.RecreditRequest do |xml|
@@ -118,19 +106,7 @@ module Endicia
 
     url = "#{request_url(options)}/BuyPostageXML"
     result = self.post(url, { :body => body })
-    
-    success = false
-    error_message = nil
-    
-    if result && result["RecreditRequestResponse"]
-      error_message = result["RecreditRequestResponse"]["ErrorMessage"]
-      success = result["RecreditRequestResponse"]["Status"] &&
-                result["RecreditRequestResponse"]["Status"].to_s == "0"
-    end
-    
-    { :success => success,
-      :error_message => error_message,
-      :raw_response => result.inspect }
+    parse_result(result, "RecreditRequestResponse")
   end
   
   private
@@ -167,6 +143,22 @@ module Endicia
     end
   
     @defaults || {}
+  end
+
+  def self.parse_result(result, root)
+    parsed_result = {
+      :success => false,
+      :error_message => nil,
+      :raw_response => result.inspect
+    }
+    
+    if result && result[root]
+      root = result[root]
+      parsed_result[:error_message] = root["ErrorMessage"]
+      parsed_result[:success] = root["Status"] && root["Status"].to_s == "0"
+    end
+    
+    parsed_result
   end
 end
 
