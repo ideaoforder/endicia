@@ -75,7 +75,7 @@ class TestEndicia < Test::Unit::TestCase
   context 'root node attributes on .get_label request' do
     setup do
       @request_url = "http://test.com"
-      Endicia.stubs(:request_url).returns(@request_url)
+      Endicia.stubs(:label_service_url).returns(@request_url)
     end
   
     should "pass LabelType option" do
@@ -163,7 +163,7 @@ class TestEndicia < Test::Unit::TestCase
   
   context '.change_pass_phrase(new, options)' do
     should 'make a ChangePassPhraseRequest call to the Endicia API' do
-      Endicia.stubs(:request_url).returns("http://example.com/api")
+      Endicia.stubs(:label_service_url).returns("http://example.com/api")
       Time.any_instance.stubs(:to_f).returns("timestamp")
       
       Endicia.expects(:post).with do |request_url, options|
@@ -227,7 +227,7 @@ class TestEndicia < Test::Unit::TestCase
       end
     end
     
-    should "include raw in return hash" do
+    should "include raw response in return hash" do
       response = stub_everything("response", :inspect => "the raw response")
       Endicia.stubs(:post).returns(response)
       result = Endicia.change_pass_phrase("new")
@@ -269,7 +269,7 @@ class TestEndicia < Test::Unit::TestCase
 
   context '.buy_postage(amount)' do
     should 'make a BuyPostage call to the Endicia API' do
-      Endicia.stubs(:request_url).returns("http://example.com/api")
+      Endicia.stubs(:label_service_url).returns("http://example.com/api")
       Time.any_instance.stubs(:to_f).returns("timestamp")
       
       Endicia.expects(:post).with do |request_url, options|
@@ -369,6 +369,130 @@ class TestEndicia < Test::Unit::TestCase
       should 'return hash with an :error_message' do
         result = Endicia.buy_postage("100")
         assert_equal "the error message", result[:error_message]
+      end
+    end
+  end
+  
+  context '.status_request(tracking_number, options)' do
+    should 'make a StatusRequest call to the Endicia API' do
+      Endicia.expects(:get).with do |els_service_url|
+        regex = /http.+&method=StatusRequest&XMLInput=(.+)/
+        els_service_url.match(regex) do |match|
+          doc = Nokogiri::Slop(URI.decode(match[1]))
+          doc.StatusRequest &&
+          doc.StatusRequest.AccountID.content == "123456" &&
+          doc.StatusRequest.PassPhrase.content == "PassPhrase" &&
+          doc.StatusRequest.Test.content == "YES" &&
+          doc.StatusRequest.StatusList.PICNumber.content == "the tracking number"
+        end
+      end
+      
+      Endicia.status_request("the tracking number", {
+        :AccountID => "123456",
+        :PassPhrase => "PassPhrase",
+        :Test => "YES"
+      })
+    end
+    
+    should 'use options from rails endicia config if present' do
+      attrs = {
+        :PassPhrase => "my_phrase",
+        :AccountID => "456789",
+        :Test => "YES"
+      }
+      
+      with_rails_endicia_config(attrs) do
+        Endicia.expects(:get).with do |els_service_url|
+          regex = /http.+&method=StatusRequest&XMLInput=(.+)/
+          els_service_url.match(regex) do |match|
+            doc = Nokogiri::Slop(URI.decode(match[1]))
+            doc.StatusRequest.Test.content == "YES" &&
+            doc.StatusRequest.AccountID.content == "456789" &&
+            doc.StatusRequest.PassPhrase.content == "my_phrase"
+          end
+        end
+        Endicia.status_request("the tracking number")
+      end
+    end
+    
+    should "include raw in return hash" do
+      response = stub_everything("response", :inspect => "the raw response")
+      Endicia.stubs(:get).returns(response)
+      result = Endicia.status_request("the tracking number")
+      assert_equal "the raw response", result[:raw_response]
+    end
+    
+    context 'when successful' do
+      setup do
+        Endicia.stubs(:get).returns({
+          "StatusResponse" => {
+            "ErrorMsg" => nil,
+            "StatusList" => {
+              "PICNumber" => %Q{
+                abc123
+                <Status>the status message</Status>
+                <StatusCode>A</StatusCode>
+              }
+            }
+          }
+        })
+      end
+      
+      should 'include :success => true in returned hash' do
+        result = Endicia.status_request("the tracking number")
+        assert result[:success], "result[:success] should be true but it's #{result[:success].inspect}"
+      end
+      
+      should 'include status message in returned hash' do
+        result = Endicia.status_request("the tracking number")
+        assert_equal "the status message", result[:status]
+      end
+    end
+    
+    context 'when not successful' do
+      setup do
+        Endicia.stubs(:get).returns({
+          "StatusResponse" => {
+            "ErrorMsg" => "I played your man and he died."
+          }
+        })
+      end
+      
+      should 'include :success => false in the returned hash' do
+        result = Endicia.status_request("the tracking number")
+        assert !result[:success], "result[:success] should be false but it's #{result[:success].inspect}"
+      end
+      
+      should 'include error message in the returned hash' do
+        result = Endicia.status_request("the tracking number")
+        assert_equal "I played your man and he died.", result[:error_message]
+      end
+    end
+    
+    context 'when tracking code is not found' do
+      setup do
+        Endicia.stubs(:get).returns({
+          "StatusResponse" => {
+            "ErrorMsg" => nil,
+            "StatusList" => {
+              "PICNumber" => %Q{
+                abc123
+                <Status>not found</Status>
+                <StatusCode>-1</StatusCode>
+              }
+            }
+          }
+        })
+      end
+      
+      should 'include :success => false in the returned hash' do
+        result = Endicia.status_request("the tracking number")
+        assert !result[:success], "result[:success] should be false but it's #{result[:success].inspect}"
+      end
+      
+      should 'include status message in returned hash' do
+        result = Endicia.status_request("the tracking number")
+        assert_equal "not found", result[:status]
       end
     end
   end

@@ -2,6 +2,7 @@ require 'rubygems'
 require 'httparty'
 require 'active_support/core_ext'
 require 'builder'
+require 'uri'
 
 require 'endicia/label'
 require 'endicia/rails_helper'
@@ -45,7 +46,7 @@ module Endicia
   def self.get_label(opts={})
     opts = defaults.merge(opts)
     opts[:Test] ||= "NO"
-    url = "#{request_url(opts)}/GetPostageLabelXML"
+    url = "#{label_service_url(opts)}/GetPostageLabelXML"
 
     root_attributes = {
       :LabelType => opts.delete(:LabelType) || "Default",
@@ -99,7 +100,7 @@ module Endicia
       xml.RequestID "CPP#{Time.now.to_f}"
     end
 
-    url = "#{request_url(options)}/ChangePassPhraseXML"
+    url = "#{label_service_url(options)}/ChangePassPhraseXML"
     result = self.post(url, { :body => body })
     parse_result(result, "ChangePassPhraseRequestResponse")
   end
@@ -130,7 +131,7 @@ module Endicia
   #
   #     {
   #       :success => true, # or false
-  #       :error_message => "the message", # or nil
+  #       :error_message => "the message", # or nil if no error
   #       :raw_response => <string representation of the HTTParty::Response object>
   #     }
   def self.buy_postage(amount, options = {})
@@ -141,9 +142,52 @@ module Endicia
       xml.RequestID "BP#{Time.now.to_f}"
     end
 
-    url = "#{request_url(options)}/BuyPostageXML"
+    url = "#{label_service_url(options)}/BuyPostageXML"
     result = self.post(url, { :body => body })
     parse_result(result, "RecreditRequestResponse")
+  end
+  
+  # Returns a hash in the form:
+  #
+  #     {
+  #       :success => true, # or false
+  #       :error_message => "the message", # or nil if no error
+  #       :status => "the package status", # or nil if error
+  #       :raw_response => <string representation of the HTTParty::Response object>
+  #     }
+  def self.status_request(tracking_number, options = {})
+    xml = Builder::XmlMarkup.new.StatusRequest do |xml|
+      xml.AccountID(options[:AccountID] || defaults[:AccountID])
+      xml.PassPhrase(options[:PassPhrase] || defaults[:PassPhrase])
+      xml.Test(options[:Test] || defaults[:Test] || "NO")
+      xml.StatusList { |xml| xml.PICNumber(tracking_number) }
+    end
+
+    params = { :method => 'StatusRequest', :XMLInput => URI.encode(xml) }
+    result = self.get(els_service_url(params))
+
+    response = {
+      :success => false,
+      :error_message => nil,
+      :status => nil,
+      :raw_response => result.inspect
+    }
+
+    # TODO: It is possible to make a batch status request, currently this only
+    #       supports one at a time. The response that comes back is not parsed
+    #       well by HTTParty. So we have to assume there is only one tracking
+    #       number in order to parse it with a regex.
+    
+    if result && result = result['StatusResponse']
+      unless response[:error_message] = result['ErrorMsg']
+        result = result['StatusList']['PICNumber']
+        response[:status] = result.match(/<Status>(.+)<\/Status>/)[1]
+        status_code = result.match(/<StatusCode>(.+)<\/StatusCode>/)[1]
+        response[:success] = (status_code.to_s != '-1')
+      end
+    end
+    
+    response 
   end
   
   private
@@ -165,10 +209,19 @@ module Endicia
   # Return the url for making requests.
   # Pass options hash with :Test => "YES" to return the url of the test server
   # (this matches the Test attribute/node value for most API calls).
-  def self.request_url(options = {})
+  def self.label_service_url(options = {})
     test = (options[:Test] || defaults[:Test] || "NO").upcase == "YES"
     url = test ? "https://www.envmgr.com" : "https://LabelServer.Endicia.com"
     "#{url}/LabelService/EwsLabelService.asmx"
+  end
+  
+  # Some requests use the ELS service url. This URL is used for requests that
+  # can accept GET, and have params passed via URL instead of a POST body.
+  # Pass a hash of params to have them converted to a &key=value string and
+  # appended to the URL.
+  def self.els_service_url(params = {})
+    params = params.to_a.map { |i| "#{i[0]}=#{i[1]}"}.join('&')
+    "http://www.endicia.com/ELS/ELSServices.cfc?wsdl&#{params}"
   end
 
   def self.defaults
