@@ -3,8 +3,12 @@ require 'httparty'
 require 'active_support/core_ext'
 require 'builder'
 
+require 'endicia/label'
+require 'endicia/rails_helper'
+
 module Endicia
   include HTTParty
+  extend RailsHelper
   
   # We need the following to make requests
   # RequesterID (string): Requester ID (also called Partner ID) uniquely identifies the system making the request. Endicia assigns this ID. The Test Server does not authenticate the RequesterID. Any text value of 1 to 50 characters is valid.
@@ -129,47 +133,7 @@ module Endicia
       :raw_response => result.inspect }
   end
   
-  class Label
-    attr_accessor :image, 
-                  :status, 
-                  :tracking_number, 
-                  :final_postage, 
-                  :transaction_date_time, 
-                  :transaction_id, 
-                  :postmark_date, 
-                  :postage_balance, 
-                  :pic,
-                  :error_message,
-                  :reference_id,
-                  :cost_center,
-                  :raw_response
-    def initialize(result)
-      self.raw_response = result.inspect
-      data = result["LabelRequestResponse"] || {}
-      data.each do |k, v|
-        k = "image" if k == 'Base64LabelImage'
-        send(:"#{k.tableize.singularize}=", v) if !k['xmlns']
-      end
-    end
-  end
-  
   private
-  
-  def self.rails?
-    defined?(Rails) || defined?(RAILS_ROOT)
-  end
-  
-  def self.rails_root
-    if rails?
-      defined?(Rails.root) ? Rails.root : RAILS_ROOT
-    end
-  end
-  
-  def self.rails_env
-    if rails?
-      defined?(Rails.env) ? Rails.env : ENV['RAILS_ENV']
-    end
-  end
 
   # Given a builder object, add the auth nodes required for many api calls.
   # Will pull values from options hash or defaults if not found.
