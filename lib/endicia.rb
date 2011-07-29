@@ -30,6 +30,9 @@ module Endicia
   # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 3-1
   # for available options.
   #
+  # Note: options should be specified in a "flat" hash, they should not be
+  # formated to fit the nesting of the XML.
+  #
   # If you are using rails, any applicable options specified in
   # config/endicia.yml will be used as defaults. For example:
   #
@@ -63,10 +66,15 @@ module Endicia
   # Change your account pass phrase. This is a required step to move to
   # production use after requesting an account.
   #
-  # Accepts a hash of options in the form: { :Name => "value", ... }
+  # Accepts the new phrase and a hash of options in the form:
+  #
+  #     { :Name => "value", ... }
   #
   # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 5-1
   # for available/required options.
+  #
+  # Note: options should be specified in a "flat" hash, they should not be
+  # formated to fit the nesting of the XML.
   #
   # If you are using rails, any applicable options specified in
   # config/endicia.yml will be used as defaults. For example:
@@ -96,6 +104,35 @@ module Endicia
     parse_result(result, "ChangePassPhraseRequestResponse")
   end
 
+  # Add postage to your account (submit a RecreditRequest). This is a required
+  # step to move to production use after requesting an account and changing
+  # your pass phrase.
+  #
+  # Accepts the amount (in dollars) and a hash of options in the form:
+  #
+  #     { :Name => "value", ... }
+  #
+  # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 5-1
+  # for available/required options.
+  #
+  # Note: options should be specified in a "flat" hash, they should not be
+  # formated to fit the nesting of the XML.
+  #
+  # If you are using rails, any applicable options specified in
+  # config/endicia.yml will be used as defaults. For example:
+  #
+  #     development:
+  #       Test: YES
+  #       AccountID: 123
+  #       ...
+  #
+  # Returns a hash in the form:
+  #
+  #     {
+  #       :success => true, # or false
+  #       :error_message => "the message", # or nil
+  #       :raw_response => <string representation of the HTTParty::Response object>
+  #     }
   def self.buy_postage(amount, options = {})
     xml = Builder::XmlMarkup.new
     body = "recreditRequestXML=" + xml.RecreditRequest do |xml|
