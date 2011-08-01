@@ -147,6 +147,22 @@ module Endicia
     parse_result(result, "RecreditRequestResponse")
   end
   
+  # Given a tracking number, return a status message for the shipment.
+  #
+  # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 12-1
+  # for available/required options.
+  #
+  # Note: options should be specified in a "flat" hash, they should not be
+  # formated to fit the nesting of the XML.
+  #
+  # If you are using rails, any applicable options specified in
+  # config/endicia.yml will be used as defaults. For example:
+  #
+  #     development:
+  #       Test: YES
+  #       AccountID: 123
+  #       ...
+  #
   # Returns a hash in the form:
   #
   #     {
