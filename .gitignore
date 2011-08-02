@@ -49,3 +49,9 @@ pkg
 
 # For rubinius:
 #*.rbc
+
+# Sample labels created by integration tests
+test/images/*.gif
+test/images/*.jpg
+test/images/*.png
+test/images/*.pdf

@@ -47,6 +47,7 @@ module Endicia
     opts = defaults.merge(opts)
     opts[:Test] ||= "NO"
     url = "#{label_service_url(opts)}/GetPostageLabelXML"
+    insurance = opts.delete(:InsuredMail)
 
     root_attributes = {
       :LabelType => opts.delete(:LabelType) || "Default",
@@ -58,6 +59,7 @@ module Endicia
     xml = Builder::XmlMarkup.new
     body = "labelRequestXML=" + xml.LabelRequest(root_attributes) do |xm|
       opts.each { |key, value| xm.tag!(key, value) }
+      xm.Services({ :InsuredMail => insurance }) if insurance
     end
     
     result = self.post(url, :body => body)

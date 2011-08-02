@@ -38,6 +38,9 @@ namespace(:test) do
     test.pattern = 'test/integration.rb'
     test.verbose = true
   end
+  
+  desc "Run unit and integration tests"
+  task(:all => ['test', 'test:integration'])
 end  
 
 require 'rcov/rcovtask'

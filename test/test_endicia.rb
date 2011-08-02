@@ -70,6 +70,16 @@ class TestEndicia < Test::Unit::TestCase
       expect_request_url(the_production_server_url("GetPostageLabelXML"))
       Endicia.get_label
     end
+    
+    should "send insurance option to endicia" do
+      %w(OFF ON UspsOnline Endicia).each do |value|
+        Endicia.expects(:post).with do |url, options|
+          doc = Nokogiri::XML(options[:body].sub("labelRequestXML=", ""))
+          !doc.css("LabelRequest > Services[InsuredMail=#{value}]").empty?
+        end.returns({})
+        Endicia.get_label({ :InsuredMail => value })
+      end
+    end
   end
   
   context 'root node attributes on .get_label request' do
