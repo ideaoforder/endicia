@@ -208,6 +208,68 @@ module Endicia
     response 
   end
   
+  # Given a tracking number and package location code,
+  # return a carrier pickup confirmation.
+  #
+  # See https://app.sgizmo.com/users/4508/Endicia_Label_Server.pdf Table 15-1
+  # for available/required options, and package location codes.
+  #
+  # If you are using rails, any applicable options specified in
+  # config/endicia.yml will be used as defaults. For example:
+  #
+  #     development:
+  #       Test: YES
+  #       AccountID: 123
+  #       ...
+  #
+  # Returns a hash in the form:
+  #
+  #     {
+  #       :success => true, # or false
+  #       :error_message => "the message", # or nil if no error message
+  #       :error_code => "usps error code", # or nil if no error
+  #       :error_description => "usps error description", # or nil if no error
+  #       :day_of_week => "pickup day of week (ex: Monday)",
+  #       :date => "xx/xx/xxxx", # date of pickup,
+  #       :confirmation_number => "confirmation number of the pickup", # save this!
+  #       :raw_response => <string representation of the HTTParty::Response object>
+  #     }
+  def self.carrier_pickup_request(tracking_number, package_location, options = {})
+    xml = Builder::XmlMarkup.new.CarrierPickupRequest do |xml|
+      xml.AccountID(options.delete(:AccountID) || defaults[:AccountID])
+      xml.PassPhrase(options.delete(:PassPhrase) || defaults[:PassPhrase])
+      xml.Test(options.delete(:Test) || defaults[:Test] || "NO")
+      xml.PackageLocation(package_location)
+      xml.PickupList { |xml| xml.PICNumber(tracking_number) }
+      options.each { |key, value| xml.tag!(key, value) }
+    end
+
+    params = { :method => 'CarrierPickupRequest', :XMLInput => URI.encode(xml) }
+    result = self.get(els_service_url(params))
+    
+    response = {
+      :success => false,
+      :raw_response => result.inspect
+    }
+    
+    # TODO: this is some nasty logic...
+    if result && result = result["CarrierPickupRequestResponse"]
+      unless response[:error_message] = result['ErrorMsg']
+        if result = result["Response"]
+          if error = result.delete("Error")
+            response[:error_code] = error["Number"]
+            response[:error_description] = error["Description"]
+          else
+            response[:success] = true
+          end
+          result.each { |key, value| response[key.underscore.to_sym] = value }
+        end
+      end
+    end
+    
+    response
+  end
+  
   private
 
   # Given a builder object, add the auth nodes required for many api calls.

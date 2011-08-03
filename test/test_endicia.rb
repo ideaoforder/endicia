@@ -506,4 +506,184 @@ class TestEndicia < Test::Unit::TestCase
       end
     end
   end
+
+  context '.carrier_pickup_request(tacking_number, package_location, options)' do
+    should 'make a CarrierPickupRequest call to the Endicia API' do
+      Endicia.expects(:get).with do |els_service_url|
+        regex = /http.+&method=CarrierPickupRequest&XMLInput=(.+)/
+        els_service_url.match(regex) do |match|
+          doc = Nokogiri::Slop(URI.decode(match[1]))
+          doc.CarrierPickupRequest &&
+          doc.CarrierPickupRequest.AccountID.content == "123456" &&
+          doc.CarrierPickupRequest.PassPhrase.content == "PassPhrase" &&
+          doc.CarrierPickupRequest.Test.content == "YES" &&
+          doc.CarrierPickupRequest.PackageLocation.content == "sd" &&
+          doc.CarrierPickupRequest.PickupList.PICNumber.content == "the tracking number"
+        end
+      end.returns({})
+      
+      Endicia.carrier_pickup_request("the tracking number", "sd", {
+        :AccountID => "123456",
+        :PassPhrase => "PassPhrase",
+        :Test => "YES"
+      })
+    end
+    
+    should 'accept custom pickup address' do
+      Endicia.expects(:get).with do |els_service_url|
+        regex = /http.+&method=CarrierPickupRequest&XMLInput=(.+)/
+        els_service_url.match(regex) do |match|
+          doc = Nokogiri::Slop(URI.decode(match[1]))
+          doc.CarrierPickupRequest.UseAddressOnFile.content == "N" &&
+          doc.CarrierPickupRequest.FirstName.content == "Slick" &&
+          doc.CarrierPickupRequest.LastName.content == "Nick" &&
+          doc.CarrierPickupRequest.CompanyName.content == "Hair Product, Inc." &&
+          doc.CarrierPickupRequest.SuiteOrApt.content == "Apt. 123" &&
+          doc.CarrierPickupRequest.Address.content == "123 Fake Street" &&
+          doc.CarrierPickupRequest.City.content == "Orlando" &&
+          doc.CarrierPickupRequest.State.content == "FL" &&
+          doc.CarrierPickupRequest.ZIP5.content == "12345" &&
+          doc.CarrierPickupRequest.ZIP4.content == "1234" &&
+          doc.CarrierPickupRequest.Phone.content == "1234567890" &&
+          doc.CarrierPickupRequest.Extension.content == "12345"
+        end
+      end.returns({})
+      
+      Endicia.carrier_pickup_request("the tracking number", "sd", {
+        :UseAddressOnFile => "N",
+        :FirstName => "Slick",
+        :LastName => "Nick",
+        :CompanyName => "Hair Product, Inc.",
+        :SuiteOrApt => "Apt. 123",
+        :Address => "123 Fake Street",
+        :City => "Orlando",
+        :State => "FL",
+        :ZIP5 => "12345",
+        :ZIP4 => "1234",
+        :Phone => "1234567890",
+        :Extension => "12345"
+      })
+    end
+    
+    should 'accept custom pickup location' do
+      Endicia.expects(:get).with do |els_service_url|
+        regex = /http.+&method=CarrierPickupRequest&XMLInput=(.+)/
+        els_service_url.match(regex) do |match|
+          doc = Nokogiri::Slop(URI.decode(match[1]))
+          doc.CarrierPickupRequest.PackageLocation.content == "ot" &&
+          doc.CarrierPickupRequest.SpecialInstructions.content == "the special instructions"
+        end
+      end.returns({})
+      
+      Endicia.carrier_pickup_request("the tracking number", "ot", {
+        :SpecialInstructions => "the special instructions"
+      })
+    end
+    
+    should 'use options from rails endicia config if present' do
+      attrs = {
+        :PassPhrase => "my_phrase",
+        :AccountID => "456789",
+        :Test => "YES"
+      }
+      
+      with_rails_endicia_config(attrs) do
+        Endicia.expects(:get).with do |els_service_url|
+          regex = /http.+&method=CarrierPickupRequest&XMLInput=(.+)/
+          els_service_url.match(regex) do |match|
+            doc = Nokogiri::Slop(URI.decode(match[1]))
+            doc.CarrierPickupRequest.Test.content == "YES" &&
+            doc.CarrierPickupRequest.AccountID.content == "456789" &&
+            doc.CarrierPickupRequest.PassPhrase.content == "my_phrase"
+          end
+        end.returns({})
+        Endicia.carrier_pickup_request("the tracking number", "sd")
+      end
+    end
+    
+    should "include raw response in return hash" do
+      response = stub_everything("response", :inspect => "the raw response")
+      Endicia.stubs(:get).returns(response)
+      result = Endicia.carrier_pickup_request("the tracking number", "sd")
+      assert_equal "the raw response", result[:raw_response]
+    end
+    
+    context 'when successful' do
+      setup do
+        Endicia.stubs(:get).returns({
+          "CarrierPickupRequestResponse" => {
+            "Response" => {
+              "DayOfWeek" => "Monday",
+              "Date" => "11/11/2011",
+              "CarrierRoute" => "C",
+              "ConfirmationNumber" => "abc123"
+            }
+          }
+        })
+      end
+      
+      should 'include :success => true in returned hash' do
+        result = Endicia.carrier_pickup_request("the tracking number", "sd")
+        assert result[:success], "result[:success] should be true but it's #{result[:success].inspect}"
+      end
+      
+      should 'include pickup information in the returned hash' do
+        result = Endicia.carrier_pickup_request("the tracking number", "sd")
+        assert_equal "Monday", result[:day_of_week]
+        assert_equal "11/11/2011", result[:date]
+        assert_equal "C", result[:carrier_route]
+        assert_equal "abc123", result[:confirmation_number]
+      end
+    end
+    
+    context 'when there is an error message' do
+      setup do
+        Endicia.stubs(:get).returns({
+          "CarrierPickupRequestResponse" => {
+            "ErrorMsg" => "your ego is out of control"
+          }
+        })
+      end
+      
+      should 'include :success => false in the returned hash' do
+        result = Endicia.carrier_pickup_request("the tracking number", "sd")
+        assert !result[:success], "result[:success] should be false but it's #{result[:success].inspect}"
+      end
+      
+      should 'include error message in the returned hash' do
+        result = Endicia.carrier_pickup_request("the tracking number", "sd")
+        assert_equal "your ego is out of control", result[:error_message]
+      end
+    end
+
+    context 'when there is an error code' do
+      setup do
+        Endicia.stubs(:get).returns({
+          "CarrierPickupRequestResponse" => {
+            "Response" => {
+              "Error" => {
+                "Number" => "123",
+                "Description" => "OverThere is an invalid package location"
+              }
+            }
+          }
+        })
+      end
+      
+      should 'include :success => false in the returned hash' do
+        result = Endicia.carrier_pickup_request("the tracking number", "sd")
+        assert !result[:success], "result[:success] should be false but it's #{result[:success].inspect}"
+      end
+      
+      should 'include error code in the returned hash' do
+        result = Endicia.carrier_pickup_request("the tracking number", "sd")
+        assert_equal "123", result[:error_code]
+      end
+
+      should 'include error message in the returned hash' do
+        result = Endicia.carrier_pickup_request("the tracking number", "sd")
+        assert_equal "OverThere is an invalid package location", result[:error_description]
+      end
+    end
+  end
 end

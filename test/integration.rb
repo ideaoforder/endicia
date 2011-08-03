@@ -71,4 +71,26 @@ class IntegrationTest < Test::Unit::TestCase
       should_save_sample_label_to("sample-insurance-#{value}.png", options)
     end
   end
+  
+  context 'calling .carrier_pickup_request with valid options' do
+    should "be successful" do
+      result = Endicia.carrier_pickup_request("abc123", "sd", {
+        :AccountID => "123456",
+        :PassPhrase => "abc123",
+        :Test => "YES"
+      })
+    
+      assert result
+      assert result[:success]
+    
+      assert_not_nil result[:day_of_week]
+      assert_not_nil result[:date]
+      assert_not_nil result[:confirmation_number]
+      assert_not_nil result[:raw_response]
+
+      assert_nil result[:error_message]
+      assert_nil result[:error_code]
+      assert_nil result[:error_description]
+    end
+  end
 end
