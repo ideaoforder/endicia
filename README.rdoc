@@ -1,48 +1,63 @@
 = endicia
 
-This gem allows you to connect to your Endicia API to print USPS labels. It is in no way meant to be exhaustive--fork away!
- 
+This gem allows you to connect to your Endicia API to print USPS labels. It is
+in no way meant to be exhaustive--fork away!
+
 == Configuration
 
 If you're using Rails, you'll want an endicia.yml file in config, with:
-	development: &development
-		AccountID: (any 6 digit number for dev)
-		RequesterID: (any string for dev)
-		PassPhrase: (any string for dev)
-		Test: YES
-		
-	test:
-		<<: *development
-		
-	production:
-		AccountID: (6 digits)
-		RequesterID (string--you have to request this from Endicia)
-		PassPhrase (string)
-		Test: NO
+
+  development: &development
+    AccountID: (any 6 digit number for dev)
+    RequesterID: (any string for dev)
+    PassPhrase: (any string for dev)
+    Test: YES
+  
+  test:
+    <<: *development
+  
+  production:
+    AccountID: (6 digits)
+    RequesterID (string--you have to request this from Endicia)
+    PassPhrase (string)
+    Test: NO
 
 Additionally, you may want to set a few defaults like your address:
-	FromCompany
-	FromCity
-	FromState
-	FromPostalCode
-	ReturnCompany
-	ReturnCity
-	ReturnState
-	ReturnCode
 
-You can also specify any of the options that Endicia allows for 'GetPostageLabel' as defaults. Most of them you'll want to pass in, but you might find it convenient to switch the default image format globally, for instance. Any options you pass in directly will override that defaults in the config file.
+  FromCompany:
+  FromCity:
+  FromState:
+  FromPostalCode:
+  ReturnCompany:
+  ReturnCity:
+  ReturnState:
+  ReturnCode:
+
+You can also specify any of the options that Endicia allows for
+'GetPostageLabel' as defaults. Most of them you'll want to pass in, but you
+might find it convenient to switch the default image format globally, for
+instance. Any options you pass in directly will override that defaults in the
+config file.
 
 Outside of Rails, you will need to pass these options to Endicia.get_label.
 
 Cheers!
 
 == Usage
-There's only one method--_get_label_.
 
-Ex. Endicia.get_label({:ToPostalCode => RECIPIENT ZIP, :ToAddress1 => RECIPIENT ADDRESS, :ToCity => RECIPIENT CITY, :ToState => RECIPIENT STATE, :PartnerTransactionID => GENERALLY THE ORDER (OR SOME MODEL) ID, :PartnerCustomerID => GENERALLY CUSTOMER/USER ID, :MailClass => SHIPPING METHOD, :WeightOz => INTEGER WEIGHT})
+  label = Endicia.get_label({
+    :ToPostalCode => RECIPIENT ZIP,
+    :ToAddress1 => RECIPIENT ADDRESS,
+    :ToCity => RECIPIENT CITY,
+    :ToState => RECIPIENT STATE,
+    :PartnerTransactionID => GENERALLY THE ORDER (OR SOME MODEL) ID,
+    :PartnerCustomerID => GENERALLY CUSTOMER/USER ID,
+    :MailClass => SHIPPING METHOD,
+    :WeightOz => INTEGER WEIGHT
+  })
 
 == Contributing to endicia
- 
+
 * Check out the latest master to make sure the feature hasn't been implemented or the bug hasn't been fixed yet
 * Check out the issue tracker to make sure someone already hasn't requested it and/or contributed it
 * Fork the project
@@ -55,4 +70,3 @@ Ex. Endicia.get_label({:ToPostalCode => RECIPIENT ZIP, :ToAddress1 => RECIPIENT 
 
 Copyright (c) 2011 Mark Dickson. See LICENSE.txt for
 further details.
-
