@@ -339,7 +339,7 @@ module Endicia
   # Handle special case where jewelry can't have insurance if sent to certain zips
   def self.extract_insurance(opts)
     opts.delete(:InsuredMail).tap do |insurance|
-      if insurance && insurance == "Endicia" && opts[:Jewelry]
+      if insurance && insurance == "Endicia" && opts.delete(:Jewelry)
         if JEWELRY_INSURANCE_EXCLUDED_ZIPS.include? opts[:ToPostalCode]
           raise InsuranceError, "Can't ship jewelry with insurance to #{opts[:ToPostalCode]}"
         end
