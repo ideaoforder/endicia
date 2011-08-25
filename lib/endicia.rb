@@ -11,6 +11,11 @@ module Endicia
   include HTTParty
   extend RailsHelper
   
+  class EndiciaError < StandardError; end
+  class InsuranceError < EndiciaError; end
+  
+  JEWELRY_INSURANCE_EXCLUDED_ZIPS = %w(10036 10017 94102 94108)
+  
   # We need the following to make requests
   # RequesterID (string): Requester ID (also called Partner ID) uniquely identifies the system making the request. Endicia assigns this ID. The Test Server does not authenticate the RequesterID. Any text value of 1 to 50 characters is valid.
   # AccountID (6 digits): Account ID for the Endicia postage account. The Test Server does not authenticate the AccountID. Any 6-digit value is valid.
@@ -47,7 +52,7 @@ module Endicia
     opts = defaults.merge(opts)
     opts[:Test] ||= "NO"
     url = "#{label_service_url(opts)}/GetPostageLabelXML"
-    insurance = opts.delete(:InsuredMail)
+    insurance = extract_insurance(opts)
 
     root_attributes = {
       :LabelType => opts.delete(:LabelType) || "Default",
@@ -330,5 +335,15 @@ module Endicia
     
     parsed_result
   end
+  
+  # Handle special case where jewelry can't have insurance if sent to certain zips
+  def self.extract_insurance(opts)
+    opts.delete(:InsuredMail).tap do |insurance|
+      if insurance && insurance == "Endicia" && opts[:Jewelry]
+        if JEWELRY_INSURANCE_EXCLUDED_ZIPS.include? opts[:ToPostalCode]
+          raise InsuranceError, "Can't ship jewelry with insurance to #{opts[:ToPostalCode]}"
+        end
+      end
+    end
+  end
 end
-

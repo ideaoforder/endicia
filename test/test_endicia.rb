@@ -80,6 +80,13 @@ class TestEndicia < Test::Unit::TestCase
         Endicia.get_label({ :InsuredMail => value })
       end
     end
+    
+    should "raise if requesting insurance for jewelry to an excluded zip" do
+      %w(10036 10017 94102 94108).each do |zip|
+        options = { :InsuredMail => "Endicia", :ToPostalCode => zip, :Jewelry => true }
+        assert_raise(Endicia::InsuranceError, /#{zip}/) { Endicia.get_label(options) }
+      end
+    end
   end
   
   context 'root node attributes on .get_label request' do
