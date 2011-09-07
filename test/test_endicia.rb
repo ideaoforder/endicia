@@ -92,6 +92,20 @@ class TestEndicia < Test::Unit::TestCase
         assert_raise(Endicia::InsuranceError, /#{zip}/) { Endicia.get_label(options) }
       end
     end
+    
+    should "return an Endicia::Label object" do
+      assert_kind_of Endicia::Label, Endicia.get_label
+    end
+    
+    should "save the request body on the returned label object" do
+      request_body = nil
+      Endicia.expects(:post).with do |url, params|
+        request_body = params[:body]
+      end.returns(fake_response)
+      
+      the_label = Endicia.get_label
+      assert_equal request_body, the_label.request_body
+    end
   end
   
   context 'root node attributes on .get_label request' do

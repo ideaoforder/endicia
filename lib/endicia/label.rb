@@ -12,6 +12,7 @@ module Endicia
                   :error_message,
                   :reference_id,
                   :cost_center,
+                  :request_body,
                   :response_body
     def initialize(result)
       self.response_body = filter_response_body(result.body.dup)

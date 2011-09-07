@@ -68,7 +68,9 @@ module Endicia
     end
     
     result = self.post(url, :body => body)
-    return Endicia::Label.new(result)
+    Endicia::Label.new(result).tap do |the_label|
+      the_label.request_body = body.to_s
+    end
   end
   
   # Change your account pass phrase. This is a required step to move to
