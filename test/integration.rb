@@ -86,7 +86,7 @@ class IntegrationTest < Test::Unit::TestCase
       assert_not_nil result[:day_of_week]
       assert_not_nil result[:date]
       assert_not_nil result[:confirmation_number]
-      assert_not_nil result[:raw_response]
+      assert_not_nil result[:response_body]
 
       assert_nil result[:error_message]
       assert_nil result[:error_code]

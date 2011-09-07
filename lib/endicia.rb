@@ -97,7 +97,7 @@ module Endicia
   #     {
   #       :success => true, # or false
   #       :error_message => "the message", # or nil
-  #       :raw_response => <string representation of the HTTParty::Response object>
+  #       :response_body => "the response body"
   #     }
   def self.change_pass_phrase(new_phrase, options = {})
     xml = Builder::XmlMarkup.new
@@ -139,7 +139,7 @@ module Endicia
   #     {
   #       :success => true, # or false
   #       :error_message => "the message", # or nil if no error
-  #       :raw_response => <string representation of the HTTParty::Response object>
+  #       :response_body => "the response body"
   #     }
   def self.buy_postage(amount, options = {})
     xml = Builder::XmlMarkup.new
@@ -176,7 +176,7 @@ module Endicia
   #       :success => true, # or false
   #       :error_message => "the message", # or nil if no error
   #       :status => "the package status", # or nil if error
-  #       :raw_response => <string representation of the HTTParty::Response object>
+  #       :response_body => "the response body"
   #     }
   def self.status_request(tracking_number, options = {})
     xml = Builder::XmlMarkup.new.StatusRequest do |xml|
@@ -193,7 +193,7 @@ module Endicia
       :success => false,
       :error_message => nil,
       :status => nil,
-      :raw_response => result.inspect
+      :response_body => result.body
     }
 
     # TODO: It is possible to make a batch status request, currently this only
@@ -237,7 +237,7 @@ module Endicia
   #       :day_of_week => "pickup day of week (ex: Monday)",
   #       :date => "xx/xx/xxxx", # date of pickup,
   #       :confirmation_number => "confirmation number of the pickup", # save this!
-  #       :raw_response => <string representation of the HTTParty::Response object>
+  #       :response_body => "the response body"
   #     }
   def self.carrier_pickup_request(tracking_number, package_location, options = {})
     xml = Builder::XmlMarkup.new.CarrierPickupRequest do |xml|
@@ -254,7 +254,7 @@ module Endicia
     
     response = {
       :success => false,
-      :raw_response => result.inspect
+      :response_body => result.body
     }
     
     # TODO: this is some nasty logic...
@@ -324,7 +324,7 @@ module Endicia
     parsed_result = {
       :success => false,
       :error_message => nil,
-      :raw_response => result.inspect
+      :response_body => result.body
     }
     
     if result && result[root]
