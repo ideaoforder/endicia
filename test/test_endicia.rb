@@ -586,7 +586,7 @@ class TestEndicia < Test::Unit::TestCase
     should "include response body in return hash" do
       response = stub_everything("response", :body => "the response body")
       Endicia.stubs(:get).returns(response)
-      result = Endicia.status_request("the tracking number")
+      result = Endicia.refund_request("the tracking number")
       assert_equal "the response body", result[:response_body]
     end
     
