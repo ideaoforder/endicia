@@ -7,6 +7,17 @@ require 'uri'
 require 'endicia/label'
 require 'endicia/rails_helper'
 
+# Hack fix because Endicia sends response back without protocol in xmlns uri
+module HTTParty
+  class Request
+    alias_method :parse_response_without_hack, :parse_response
+    def parse_response(body)
+      parse_response_without_hack(
+        body.sub(/xmlns=("|')(www.envmgr.com|LabelServer.Endicia.com)/, 'xmlns=\1https://\2'))
+    end
+  end
+end
+
 module Endicia
   include HTTParty
   extend RailsHelper
