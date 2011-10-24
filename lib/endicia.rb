@@ -65,19 +65,12 @@ module Endicia
     url = "#{label_service_url(opts)}/GetPostageLabelXML"
     insurance = extract_insurance(opts)
 
-    root_attributes = {
-      :LabelType => opts.delete(:LabelType) || "Default",
-      :Test => opts.delete(:Test),
-      :LabelSize => opts.delete(:LabelSize),
-      :ImageFormat => opts.delete(:ImageFormat),
-      :ImageResolution => opts.delete(:ImageResolution)
-    }
+    root_keys = :LabelType, :Test, :LabelSize, :ImageFormat, :ImageResolution
+    root_attributes = extract(opts, root_keys)
+    root_attributes[:LabelType] ||= "Default"
     
-    mailpiece_dimenions = {
-      :Length => opts.delete(:Length),
-      :Width  => opts.delete(:Width),
-      :Height => opts.delete(:Height)
-    }.delete_if { |key, value| value.blank? }
+    dimension_keys = :Length, :Width, :Height
+    mailpiece_dimenions = extract(opts, dimension_keys)
 
     xml = Builder::XmlMarkup.new
     body = "labelRequestXML=" + xml.LabelRequest(root_attributes) do |xm|
@@ -361,6 +354,15 @@ module Endicia
   end
   
   private
+  
+  def self.extract(hash, keys)
+    {}.tap do |return_hash|
+      keys.each do |key|
+        value = return_hash[key] = hash.delete(key)
+        return_hash.delete(key) if value.nil? || value.empty?
+      end
+    end
+  end
 
   # Given a builder object, add the auth nodes required for many api calls.
   # Will pull values from options hash or defaults if not found.
