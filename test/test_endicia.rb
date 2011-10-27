@@ -118,6 +118,16 @@ class TestEndicia < Test::Unit::TestCase
       the_label = Endicia.get_label
       assert_equal request_body, the_label.request_body
     end
+    
+    should "save the request url to the returned label object" do
+      request_url = nil
+      Endicia.expects(:post).with do |url, params|
+        request_url = url
+      end.returns(fake_response)
+      
+      the_label = Endicia.get_label
+      assert_equal request_url, the_label.request_url
+    end
   end
   
   context 'root node attributes on .get_label request' do

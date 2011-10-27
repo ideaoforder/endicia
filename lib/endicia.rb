@@ -86,6 +86,7 @@ module Endicia
     result = self.post(url, :body => body)
     Endicia::Label.new(result).tap do |the_label|
       the_label.request_body = body.to_s
+      the_label.request_url = url
     end
   end
   
