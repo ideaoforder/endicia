@@ -208,23 +208,23 @@ module Endicia
     params = { :method => 'StatusRequest', :XMLInput => URI.encode(xml) }
     result = self.get(els_service_url(params))
 
+    response_body = result.body
     response = {
       :success => false,
       :error_message => nil,
       :status => nil,
-      :response_body => result.body
+      :response_body => response_body
     }
 
     # TODO: It is possible to make a batch status request, currently this only
     #       supports one at a time. The response that comes back is not parsed
     #       well by HTTParty. So we have to assume there is only one tracking
     #       number in order to parse it with a regex.
-    
+        
     if result && result = result['StatusResponse']
       unless response[:error_message] = result['ErrorMsg']
-        result = result['StatusList']['PICNumber']
-        response[:status] = result.match(/<Status>(.+)<\/Status>/)[1]
-        status_code = result.match(/<StatusCode>(.+)<\/StatusCode>/)[1]
+        response[:status] = response_body.match(/<Status>(.+)<\/Status>/)[1]
+        status_code = response_body.match(/<StatusCode>(.+)<\/StatusCode>/)[1]
         response[:success] = (status_code.to_s != '-1')
       end
     end

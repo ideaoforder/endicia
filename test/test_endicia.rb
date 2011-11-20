@@ -490,18 +490,10 @@ class TestEndicia < Test::Unit::TestCase
     
     context 'when successful' do
       setup do
-        Endicia.stubs(:get).returns(fake_response({
-          "StatusResponse" => {
-            "ErrorMsg" => nil,
-            "StatusList" => {
-              "PICNumber" => %Q{
-                abc123
-                <Status>the status message</Status>
-                <StatusCode>A</StatusCode>
-              }
-            }
-          }
-        }))
+        Endicia.stubs(:get).returns(fake_response(
+          { "StatusResponse" => {} },
+          "<Status>the status message</Status>
+          <StatusCode>A</StatusCode>"))
       end
       
       should 'include :success => true in returned hash' do
@@ -537,18 +529,10 @@ class TestEndicia < Test::Unit::TestCase
     
     context 'when tracking code is not found' do
       setup do
-        Endicia.stubs(:get).returns(fake_response({
-          "StatusResponse" => {
-            "ErrorMsg" => nil,
-            "StatusList" => {
-              "PICNumber" => %Q{
-                abc123
-                <Status>not found</Status>
-                <StatusCode>-1</StatusCode>
-              }
-            }
-          }
-        }))
+        Endicia.stubs(:get).returns(fake_response(
+          { "StatusResponse" => {} },
+          "<Status>not found</Status>
+          <StatusCode>-1</StatusCode>"))
       end
       
       should 'include :success => false in the returned hash' do
