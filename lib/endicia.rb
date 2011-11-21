@@ -438,7 +438,7 @@ module Endicia
   end
   
   def self.handle_extended_zip_code(opts)
-    /([0-9]{5})-([0-9]{4})/.match(opts[:ToPostalCode]) do |m|
+    if m = /([0-9]{5})-([0-9]{4})/.match(opts[:ToPostalCode])
       opts[:ToPostalCode] = m[1]
       opts[:ToZIP4] = m[2]
     end
