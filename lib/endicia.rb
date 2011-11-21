@@ -64,6 +64,7 @@ module Endicia
     opts[:Test] ||= "NO"
     url = "#{label_service_url(opts)}/GetPostageLabelXML"
     insurance = extract_insurance(opts)
+    handle_extended_zip_code(opts)
 
     root_keys = :LabelType, :Test, :LabelSize, :ImageFormat, :ImageResolution
     root_attributes = extract(opts, root_keys)
@@ -433,6 +434,13 @@ module Endicia
           raise InsuranceError, "Can't ship jewelry with insurance to #{opts[:ToPostalCode]}"
         end
       end
+    end
+  end
+  
+  def self.handle_extended_zip_code(opts)
+    /([0-9]{5})-([0-9]{4})/.match(opts[:ToPostalCode]) do |m|
+      opts[:ToPostalCode] = m[1]
+      opts[:ToZIP4] = m[2]
     end
   end
 end

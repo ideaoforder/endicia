@@ -20,9 +20,9 @@ class IntegrationTest < Test::Unit::TestCase
       :FromState => "FL",
       :FromPostalCode => "32862",
       :ToAddress1 => "123 Fake Street",
-      :ToCity => "San Francisco",
-      :ToState => "CA",
-      :ToPostalCode => "94102"
+      :ToCity => "Austin",
+      :ToState => "TX",
+      :ToPostalCode => "78723"
     }
   end
   
@@ -72,6 +72,9 @@ class IntegrationTest < Test::Unit::TestCase
       should_generate_label_from("options with insurance value of #{value}", options)
       should_save_sample_label_to("sample-insurance-#{value}.png", options)
     end
+    
+    should_generate_label_from("a 9-digit zip code",
+      label_request_options.merge(:ToPostalCode => "78723-5374"))
   end
   
   context 'calling .carrier_pickup_request with valid options' do

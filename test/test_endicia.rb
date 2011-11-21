@@ -83,6 +83,15 @@ class TestEndicia < Test::Unit::TestCase
       Endicia.get_label
     end
     
+    should "break 9-digit zip codes into two fields" do
+      expect_label_request_body_with do |doc|
+        doc.at_css("LabelRequest > ToPostalCode").content == "12345"
+        doc.at_css("LabelRequest > ToZIP4").content == "6789"
+      end
+      
+      Endicia.get_label(:ToPostalCode => "12345-6789")
+    end
+    
     should "send insurance option to endicia" do
       %w(OFF ON UspsOnline Endicia).each do |value|
         expect_label_request_body_with do |doc|
