@@ -51,9 +51,11 @@ class IntegrationTest < Test::Unit::TestCase
       # Bare minimum assertion to ensure we have *something* there...
       File.open(sample, 'r') { |f| assert f.size > 1024 }
       # ...but mostly we just want to see it with our own eyes:
-      puts "\n==============================================================="
-      puts " Saved example shipping label at:\n #{sample} "
-      puts "==============================================================="
+      if ENV['SHOW_SAMPLE_PATHS']
+        puts "\n============================================================="
+        puts " Saved example shipping label at:\n #{sample} "
+        puts "============================================================="
+      end
     end
   end
   
