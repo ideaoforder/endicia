@@ -210,7 +210,7 @@ module Endicia
     params = { :method => 'StatusRequest', :XMLInput => URI.encode(xml) }
     result = self.get(els_service_url(params))
     response_body = result.body
-    response_body.gsub!(/<PICNumber>.*$/, "<PICNumber>")
+    response_body.gsub!(/<PICNumber>[^<]*/, "<PICNumber>")
     response = {
       :success => false,
       :error_message => nil,
