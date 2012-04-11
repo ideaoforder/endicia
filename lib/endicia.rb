@@ -12,6 +12,10 @@ module HTTParty
   class Request
     alias_method :parse_response_without_hack, :parse_response
     def parse_response(body)
+      Rails.logger.info("RESPONSE>")
+      Rails.logger.info(body)
+      Rails.logger.info("<RESPONSE")
+
       parse_response_without_hack(
         body.sub(/xmlns=("|')(www.envmgr.com|LabelServer.Endicia.com)/, 'xmlns=\1https://\2'))
     end
@@ -207,6 +211,13 @@ module Endicia
       xml.StatusList { |xml| xml.PICNumber(tracking_number) }
     end
 
+    if options[:logger]
+      options[:logger].info("ENDICIA REQUEST: #{tracking_number}")
+      options[:logger].info("\n[REQUEST]")
+      options[:logger].info(xml)
+      options[:logger].info("[ENDREQUEST]")
+    end
+
     params = { :method => 'StatusRequest', :XMLInput => URI.encode(xml) }
     result = self.get(els_service_url(params))
     response_body = result.body
@@ -217,6 +228,12 @@ module Endicia
       :status => nil,
       :response_body => response_body
     }
+
+    if options[:logger]
+      options[:logger].info("\n[RESPONSE]")
+      options[:logger].info(xml)
+      options[:logger].info("[ENDRESPONSE]")
+    end
 
     # TODO: It is possible to make a batch status request, currently this only
     #       supports one at a time. The response that comes back is not parsed
